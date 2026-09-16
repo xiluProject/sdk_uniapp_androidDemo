@@ -279,7 +279,6 @@ public class XiluAdModule extends UniModule {
             eb.rewardExtra(extra);
         }
         rewardAd.setLocalExtraParams(eb.build());
-        // 仅 debug 模式生效，上线时建议不设置。
         rewardAd.setOnlySupportPlatform(string(o, "onlySupportPlatform", null));
         rewardAd.setSceneId(string(o, "sceneId", ""));
         rewardAd.loadAd(string(o, "posId", ""));
