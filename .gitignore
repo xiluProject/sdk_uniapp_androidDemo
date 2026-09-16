@@ -5,7 +5,6 @@
 **/gradle.properties
 *.log
 *.apk
-*.aar
 
 # Uniapp build outputs
 **/unpackage/
@@ -41,3 +40,13 @@ gradle/wrapper/gradle-wrapper.jar
 
 # Lock files
 *.lock
+
+# Build aar files (but allow vendor/)
+**/build/**/*.aar
+**/patched-libs/**/*.aar
+**/dist/**/*.aar
+
+# Vendor SDK libs (allow)
+!vendor/**/*.aar
+!xilu-ad-bridge/libs_uni/**/*.aar
+!xilu-uni-demo/nativeplugins/**/*.aar
