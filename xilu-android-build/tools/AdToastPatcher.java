@@ -20,10 +20,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
-/**
- * 【打包期补丁】静默 DCloud uni-AD 的噪音 toast（含 9001/9002 文本的那条）。
- *
- */
+/** 编译期补丁：屏蔽 DCloud uni-AD 干扰 toast（含 9001/9002 等错误码文本）。 */
 public final class AdToastPatcher {
 
     /** App 侧的过滤器（本仓库源码，见 app/src/main/java/com/qunze/xiju/adfix/AdToastFilter.java） */
@@ -52,10 +49,7 @@ public final class AdToastPatcher {
     private static final String C_RUN_METHOD = "run()V";
     private static final String C_TEXT_FIELD = "b";
 
-    /**
-     * 收口 4：com.dcloud.android.widget.toast.ToastCompat.show() —— DCloud 自己的 Toast 包装类，
-     * 所有走它的提示（含 PdrUtil/权限/相册/录音等各处）都在这里收口；文案在其内部 Toast 的视图树里。
-     */
+    /** ToastCompat.show() —— DCloud 自有 Toast 包装类，所有提示收口于此，文案在内部 Toast 视图树中。 */
     private static final String TOAST_COMPAT_CLASS = "com/dcloud/android/widget/toast/ToastCompat.class";
     private static final String TOAST_COMPAT_SHOW = "show()V";
 
@@ -64,11 +58,7 @@ public final class AdToastPatcher {
     private static final String PDRUTIL_TOAST =
             "toast(Landroid/content/Context;Ljava/lang/String;Landroid/graphics/Bitmap;)V";
 
-    /**
-     * 收口 6：weex 引擎的模态模块 {@code com.taobao.weex.ui.module.WXModalUIModule}
-     * （在 uniapp-v8-release.aar，跑在 :jse 进程）——实测 -9001 那条提示就是从这里的
-     * {@code toast(fastjson.JSONObject)} 弹出的，参数里带 message。
-     */
+    /** WXModalUIModule 的 toast/alert/confirm/prompt —— 使用 fastjson JSONObject；-9001 该提示即源于此。 */
     private static final String WX_MODAL_CLASS = "com/taobao/weex/ui/module/WXModalUIModule.class";
     private static final String WX_FASTJSON = "Lcom/alibaba/fastjson/JSONObject;";
     private static final String WX_FILTER_DESC = "(Lcom/alibaba/fastjson/JSONObject;)Z";
@@ -245,18 +235,7 @@ public final class AdToastPatcher {
         return write(cn);
     }
 
-    /**
-     * 在方法入口插入：
-     * <pre>
-     *   if (AdToastFilter.shouldSilence(arg)) return;   // 同步方法，按返回类型给空返回值
-     * </pre>
-     *
-     * @param argIndex    取哪个局部变量（通常 0=this）
-     * @param filterDesc  过滤方法描述符
-     * @param fieldOwner  非空时先 GETFIELD：字段所属类（如 io/dcloud/p/g0）
-     * @param fieldName   字段名（如 e / b）
-     * @param fieldDesc   字段类型描述符
-     */
+    /** 在方法入口插入静默检查：if (AdToastFilter.shouldSilence(arg)) return 默认值。 */
     private static void prependSilenceCheck(MethodNode mn, int argIndex, String filterDesc,
                                             String fieldOwner, String fieldName, String fieldDesc) {
         AbstractInsnNode first = mn.instructions.getFirst();
@@ -290,9 +269,7 @@ public final class AdToastPatcher {
         return write(cn);
     }
 
-    /**
-     * 变体：把 {@code this.<owner>.<name><desc>() } 的返回值交给过滤器判断（如 Toast.getView()）
-     */
+    /** 变体：将 this.<owner>.<name>() 的返回值传给过滤器判断（如 Toast.getView()）。 */
     private static void prependCallSilenceCheck(MethodNode mn, String owner, String name, String desc) {
         AbstractInsnNode first = mn.instructions.getFirst();
         if (first == null) {

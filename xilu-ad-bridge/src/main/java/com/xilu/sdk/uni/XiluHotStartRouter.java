@@ -19,35 +19,7 @@ import com.xilu.sdk.core.manager.HotStartSplashManager;
 import com.xilu.sdk.core.manager.HotStartSplashPreloadManager;
 import com.xilu.sdk.core.model.InitData;
 
-/**
- * 【uni-app 集成适配】热启动开屏的展示时机与宿主修正（不改 Xilu SDK，只用它的 public API）。
- *
- * <p><b>问题</b>：uni-app 离线包的 LAUNCHER 入口是 DCloud 的**瞬态透明壳** {@code io.dcloud.PandoraEntry}，
- * 它 resume 后立刻 startActivity(主 Activity) 并 finish 自己。而 SDK 的热启动展示点是
- * "App 回到前台后**第一个** resume 的 Activity"（见 {@code CustomActivityLifecycleCallbacks}），
- * 于是容器被挂到那个几百毫秒后就销毁的壳上 → 热启动广告"一闪就没了"。
- *
- * <p><b>需求</b>：热启动广告只属于"热启动那一刻正在显示的那个页面"，展示一次就结束；
- * App 内之后的任何跳转（含我们自己的开屏页、广告落地页）都与这次热启动广告无关，不能再冒出来。
- *
- * <p><b>做法</b>：把 SDK 的"自动热启动"整个关掉，改由本类在正确的时机、用正确的宿主主动调一次：
- * <ol>
- *   <li><b>常态压制</b>：{@code applySplashLaunch(hotStart=0)} 让 {@code isEnabled()==false}。
- *       本类在 SDK 之前注册生命周期回调，因此每次 resume 都是我们先跑 → SDK 自己那次触发永远被挡住，
- *       不会再出现挂在透明壳/开屏页/广告页上的意外展示。</li>
- *   <li><b>前台回合</b>：自己数 Activity 的 started 计数（0→1 即"App 回到前台"，
- *       App 内跳转不会掉到 0），在 0→1 时记下后台时长。</li>
- *   <li><b>只展示一次</b>：每个前台回合只在**第一个真正可见的宿主 Activity**(非透明壳、非广告页) 的 resume 上
- *       决策一次：后台时长 ≥ 阈值 → 临时恢复开关并调 {@code HotStartSplashManager.onHotStart(activity, gap)}
- *       （容器挂在当前这个页面上）；之后的任何 resume 一律跳过。</li>
- *   <li><b>喂缓存</b>：{@code onHotStart} 只在缓存命中时展示，缓存只由预加载竞价写入，而
- *       {@code startPreloadBid()} 也要求 {@code isEnabled()}。所以展示后（以及冷启动进入主页面后）
- *       由本类临时恢复开关、自己发起一次预加载竞价，再压回去——保证下一次热启动有货可展示。</li>
- * </ol>
- *
- * <p>展示/曝光/点击/上报仍全部走 SDK 原路径；展示间隔(hotTime)、每日上限(hotDailyLimit)、
- * 是否区分冷热广告位(hotDiffSlot) 仍由 SDK 内部按服务端配置判定。
- */
+/** 热启动开屏路由：修正 uni-app 透明壳导致的宿主错位，确保广告挂在真正可见的业务页面上，每次前台回合仅展示一次。 */
 public final class XiluHotStartRouter implements Application.ActivityLifecycleCallbacks {
 
     private static final String TAG = "XiluHotStartFix";
@@ -55,11 +27,7 @@ public final class XiluHotStartRouter implements Application.ActivityLifecycleCa
     /** DCloud 离线包的瞬态透明壳（起完主 Activity 即 finish，挂上去必然跟着销毁） */
     private static final String SHELL_ACTIVITY = "io.dcloud.PandoraEntry";
 
-    /**
-     * 最小后台时长默认值：低于它的 resume 视为"App 内活动切换"而不是热启动。
-     * 真正的热启动（回桌面/切到别的 App 再回来）是秒级起步；壳→主 Activity 的切换只有百毫秒级。
-     * 宿主可用 init 的 hotStartMinBackgroundMs 覆盖。
-     */
+    /** 最小后台时长默认值：低于此视为 App 内切换；真正热启动为秒级。宿主可用 hotStartMinBackgroundMs 覆盖。 */
     private static final long DEFAULT_MIN_BACKGROUND_MS = 1000L;
 
     /** 两次预加载竞价的最小间隔（一次竞价约 3s 出结果，避免重复竞价） */
@@ -74,10 +42,7 @@ public final class XiluHotStartRouter implements Application.ActivityLifecycleCa
     /** 后台判定防抖：started 计数归零后等这么久仍无 Activity 起来，才认定 App 真的进后台 */
     private static final long BACKGROUND_CONFIRM_DELAY_MS = 250L;
 
-    /**
-     * 不作为"热启动宿主"的 Activity 前缀：广告 SDK 自己的页面、我们自己的开屏页。
-     * 出现在这些页面上时，说明当前显示的不是业务页面，不挂热启动开屏。
-     */
+    /** 非热启动宿主 Activity 前缀：广告 SDK 页面、自有开屏页。出现这些说明当前非业务页面，不挂热启动。 */
     private static final String[] NON_HOST_PREFIXES = {
             "com.xilu.sdk.uni.",           // 本插件自己的 XiluSplashActivity
             "com.qq.e.",                   // 优量汇
@@ -145,12 +110,7 @@ public final class XiluHotStartRouter implements Application.ActivityLifecycleCa
     private XiluHotStartRouter() {
     }
 
-    /**
-     * 注册路由（必须在 {@code ADXiluSdk.getInstance().init(...)} 之前调用，保证回调先于 SDK 执行）。
-     * 热启动用的广告位不需要宿主传：直接用 SDK 配置里的开屏广告位，见 {@link #splashPosId()}。
-     *
-     * @param app Application
-     */
+    /** 注册路由（必须在 ADXiluSdk.init 之前调用）。热启动广告位直接取 SDK 配置中的开屏位，宿主无需额外配置。 */
     public static void install(Application app) {
         if (app == null) return;
         if (sInstance == null) {
@@ -161,10 +121,7 @@ public final class XiluHotStartRouter implements Application.ActivityLifecycleCa
         }
     }
 
-    /**
-     * 热启动开屏广告位 = SDK 配置里的开屏广告位（posIdMap 中 adType 为 splash 的那一个），
-     * 与 SDK 自己 {@code fetchSplashPosId()} 的取法一致，因此宿主不需要额外配置。
-     */
+    /** 热启动广告位 = SDK 配置中的开屏位，与 SDK 内部取法一致，宿主无需额外配置。 */
     private String splashPosId() {
         if (mSplashPosId != null) return mSplashPosId;
         try {
@@ -276,10 +233,7 @@ public final class XiluHotStartRouter implements Application.ActivityLifecycleCa
     // 热启动展示
     // ------------------------------------------------------------------
 
-    /**
-     * 在当前这个页面上展示热启动开屏广告。
-     * 只临时恢复 SDK 开关，调用后立刻压回去——SDK 自己的自动触发始终处于关闭状态。
-     */
+    /** 在当前页面展示热启动开屏：临时恢复 SDK 开关，调用后立即压回，SDK 自动触发始终关闭。 */
     private void displayHotStart(Activity activity, long backgroundMs) {
         final HotStartSplashManager mgr = HotStartSplashManager.getInstance();
         if (mgr.isShowing()) {
@@ -308,10 +262,7 @@ public final class XiluHotStartRouter implements Application.ActivityLifecycleCa
     // 预加载竞价（热启动广告的缓存来源）
     // ------------------------------------------------------------------
 
-    /**
-     * 保证热启动缓存已就绪：没有有效缓存时发起一次预加载竞价。
-     * 这次竞价是热启动广告能展示的前提（{@code onHotStart} 只在缓存命中时展示）。
-     */
+    /** 保证热启动缓存就绪：无有效缓存时发起预加载竞价（onHotStart 仅缓存命中时展示）。 */
     private void ensureCacheArmed(String reason) {
         final String posId = splashPosId();
         if (TextUtils.isEmpty(posId)) return;
@@ -362,7 +313,7 @@ public final class XiluHotStartRouter implements Application.ActivityLifecycleCa
     // SDK 热启动开关 压制/恢复
     // ------------------------------------------------------------------
 
-    /** 压下 SDK 自带热启动：只改开关，其余字段保留服务端下发值 */
+    /** 压制 SDK 自带热启动：仅改开关，其余字段保留服务端下发值。 */
     private void suppress() {
         if (mSuppressed) return;
         InitData.SplashLaunch server = serverConfig();
@@ -376,7 +327,7 @@ public final class XiluHotStartRouter implements Application.ActivityLifecycleCa
         Log.i(TAG, "suppress SDK hot-start (hotStart=0)");
     }
 
-    /** 恢复服务端下发的热启动配置（只在我们自己调用 SDK 的瞬间） */
+    /** 恢复服务端下发的热启动配置（仅在调用 SDK 瞬间）。 */
     private void restore() {
         if (!mSuppressed) return;
         InitData.SplashLaunch server = serverConfig();
@@ -417,7 +368,7 @@ public final class XiluHotStartRouter implements Application.ActivityLifecycleCa
     // 宿主判定
     // ------------------------------------------------------------------
 
-    /** 瞬态宿主判定：DCloud 透明壳 / 正在 finish / 主题声明了 windowIsTranslucent（挂上去必然跟着销毁） */
+    /** 瞬态宿主判定：DCloud 透明壳 / 正在 finish / 主题 windowIsTranslucent（挂上去必然随即销毁）。 */
     private static boolean isTransientHost(Activity activity) {
         if (SHELL_ACTIVITY.equals(activity.getClass().getName())) return true;
         if (activity.isFinishing()) return true;

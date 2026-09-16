@@ -29,12 +29,10 @@ import io.dcloud.feature.uniapp.bridge.UniJSCallback;
 import io.dcloud.feature.uniapp.common.UniModule;
 import io.dcloud.feature.uniapp.annotation.UniJSMethod;
 
-/**
- * Xilu-AD 桥接 Module：init / 激励视频 / 插屏 / 全屏视频 / 开屏
- */
+/** Xilu-AD 桥接 Module：init / 激励视频 / 插屏 / 全屏视频 / 开屏。 */
 public class XiluAdModule extends UniModule {
 
-    /** 激励视频：每次 load 重建实例（展示后须重新 load，load 前先 release 旧 adInfo） */
+    /** 激励视频：每次 load 重建实例（展示后须重新 load，load 前先 release 旧 adInfo）。 */
     private ADXiluRewardVodAd rewardAd;
     private ADXiluRewardVodAdInfo rewardAdInfo;
     private UniJSCallback rewardCb;
@@ -61,7 +59,7 @@ public class XiluAdModule extends UniModule {
         cb.invokeAndKeepAlive(p);
     }
 
-    /** err(e) → {"error": e.toString()}，ADXiluError.toString() 含错误码 */
+    /** err(e) → {"error": e.toString()}，ADXiluError.toString() 含错误码。 */
     static JSONObject err(ADXiluError e) {
         return err(e == null ? "unknown" : e.toString());
     }
@@ -70,14 +68,14 @@ public class XiluAdModule extends UniModule {
         return json("error", e);
     }
 
-    /** json(k, v) → 单键对象 */
+    /** json(k, v) → 单键对象。 */
     static JSONObject json(String k, Object v) {
         JSONObject o = new JSONObject();
         o.put(k, v);
         return o;
     }
 
-    /** 广告信息透传（platform/ecpm 等），供 JS 展示与排查填充渠道 */
+    /** 广告信息透传（platform/ecpm 等），供 JS 展示与排查填充渠道。 */
     static JSONObject adInfo(ADXiluAdInfo info) {
         JSONObject d = new JSONObject();
         if (info == null) return d;
@@ -89,7 +87,7 @@ public class XiluAdModule extends UniModule {
         return d;
     }
 
-    /** fastjson 兼容取值（uni 基座内置 fastjson 版本无 optXxx/双参 getXxxValue） */
+    /** fastjson 兼容取值（uni 基座内置版本无 optXxx/双参 getXxxValue）。 */
     static boolean bool(JSONObject o, String k, boolean def) {
         Boolean v = o.getBoolean(k);
         return v == null ? def : v;
@@ -105,7 +103,7 @@ public class XiluAdModule extends UniModule {
         return v == null ? def : v;
     }
 
-    /** 未初始化守卫：未 init 时直接回调失败，由 JS 侧保证在 onSuccess 后再调用 */
+    /** 未初始化守卫：未 init 时直接回调失败，JS 侧保证在 onSuccess 后再调用。 */
     private boolean guardInit(UniJSCallback cb) {
         if (ADXiluSdk.getInstance().isInit()) return false;
         emit(cb, "onAdFailed", err("SDK未初始化"));
@@ -117,10 +115,7 @@ public class XiluAdModule extends UniModule {
     // ------------------------------------------------------------------
     @UniJSMethod(uiThread = true)
     public void init(JSONObject o, final UniJSCallback cb) {
-        // Xilu SDK 的日志开关 sEnableLog 默认 false，且 SDK 内部没有任何地方调用
-        // ADXiluLogUtil.setEnableLog()（AAR 以 release 编译，BuildConfig.DEBUG 被内联为 false），
-        // 因此竞价/瀑布流选择、参选平台数量、各平台成败等日志默认全部不打印。
-        // 这里由宿主按需打开（tag 固定为 ADXiluLog），默认关闭；排查时传 logDebug:true。
+        // Xilu SDK 日志默认关闭（release 编译），宿主可按需开启 logDebug，tag 固定为 ADXiluLog。
         ADXiluLogUtil.setEnableLog(bool(o, "logDebug", false));
 
         ADXiluInitConfig.Builder builder = new ADXiluInitConfig.Builder()
@@ -177,9 +172,7 @@ public class XiluAdModule extends UniModule {
             });
         }
 
-        // 【uni-app 集成适配·方案B】必须在 ADXiluSdk.init() 之前注册：
-        // 热启动开屏的宿主会被 DCloud 的瞬态透明壳带走（一闪），路由类把我们自己的生命周期回调
-        // 插到 SDK 之前，把展示时机挪到真正可见的 Activity 上。详见 XiluHotStartRouter。
+        // 必须在 ADXiluSdk.init 前注册热启动路由：修正透明壳导致的宿主错位，详见 XiluHotStartRouter。
         XiluHotStartRouter.install(
                 (android.app.Application) mUniSDKInstance.getContext().getApplicationContext());
 
@@ -198,11 +191,8 @@ public class XiluAdModule extends UniModule {
                 });
     }
 
-    // 【保持 uiThread=false】uni 的 NativeInvokeHelper 对 uiThread=true 的方法是 postOnUiThread 后
-    // 立即 return null（拿不到返回值），故返回 boolean 的同步方法只能留在 JS 线程执行；
-    // 本方法只读一个 boolean 字段，无 SDK 主线程约束。
-    // 注意：真正兜底的 guardInit() 在 loadXxx/showSplash 内部（已随上面各方法跑在主线程），与
-    // setInitListenerSuccess() 同线程，不存在可见性问题。
+    // 保持 uiThread=false：uni 的 NativeInvokeHelper 对 uiThread=true 方法 postOnUiThread 后立即 return null，故返回 boolean 的同步方法只能在 JS 线程执行；
+// guardInit() 在 loadXxx/showSplash 内部（主线程），与 setInitListenerSuccess() 同线程，无可见性问题。
     @UniJSMethod(uiThread = false)
     public boolean isInit() {
         return ADXiluSdk.getInstance().isInit();
@@ -218,13 +208,13 @@ public class XiluAdModule extends UniModule {
     public void loadRewardVideo(JSONObject o, UniJSCallback cb) {
         rewardCb = cb;
         if (guardInit(cb)) return;
-        // 重新加载前释放旧广告（一次成功拉取的广告数据只允许展示一次）
+        // 重新加载前释放旧广告（一次成功拉取的广告数据只允许展示一次）。
         if (rewardAdInfo != null) {
             rewardAdInfo.release();
             rewardAdInfo = null;
         }
         Activity activity = (Activity) mUniSDKInstance.getContext();
-        // 复用同一个 rewardAd 实例，避免多实例并发导致 SDK 内部状态冲突
+        // 复用同一个 rewardAd 实例，避免多实例并发导致 SDK 内部状态冲突。
         if (rewardAd == null) {
             rewardAd = new ADXiluRewardVodAd(activity);
             rewardAd.setListener(new ADXiluRewardVodAdListener() {
@@ -241,7 +231,7 @@ public class XiluAdModule extends UniModule {
 
                 @Override
                 public void onVideoCache(ADXiluRewardVodAdInfo adInfo) {
-                    // 部分渠道不会回调该方法，请在 onAdReceive 做广告展示处理
+                    // 部分渠道不会回调该方法，请在 onAdReceive 做广告展示处理。
                     emit(rewardCb, "onVideoCache", null);
                 }
 
@@ -279,7 +269,7 @@ public class XiluAdModule extends UniModule {
         ADXiluExtraParams.Builder eb = new ADXiluExtraParams.Builder()
                 .setVideoWithMute(bool(o, "muted", false))
                 .setAdShakeDisable(bool(o, "adShakeDisable", false));
-        // 服务端验证（可选）：带 userId 时透传
+        // 服务端验证（可选）：带 userId 时透传。
         String userId = string(o, "userId", "");
         if (!userId.isEmpty()) {
             ADXiluRewardExtra extra = new ADXiluRewardExtra(userId);
@@ -289,7 +279,7 @@ public class XiluAdModule extends UniModule {
             eb.rewardExtra(extra);
         }
         rewardAd.setLocalExtraParams(eb.build());
-        // 仅 debug 模式生效，上线时建议不设置
+        // 仅 debug 模式生效，上线时建议不设置。
         rewardAd.setOnlySupportPlatform(string(o, "onlySupportPlatform", null));
         rewardAd.setSceneId(string(o, "sceneId", ""));
         rewardAd.loadAd(string(o, "posId", ""));
@@ -297,7 +287,7 @@ public class XiluAdModule extends UniModule {
 
     @UniJSMethod(uiThread = true)
     public void showRewardVideo(JSONObject o, UniJSCallback cb) {
-        // 三重校验与 Demo 一致，失败经 onShowFailed 返回
+        // 三重校验与 Demo 一致，失败经 onShowFailed 返回。
         if (rewardAdInfo == null) {
             emit(cb, "onShowFailed", err("无可用广告"));
             return;
@@ -327,7 +317,7 @@ public class XiluAdModule extends UniModule {
             interstitialAdInfo = null;
         }
         Activity activity = (Activity) mUniSDKInstance.getContext();
-        // 复用同一个 interstitialAd 实例，避免多实例并发导致 SDK 内部状态冲突
+        // 复用同一个 interstitialAd 实例，避免多实例并发导致 SDK 内部状态冲突。
         if (interstitialAd == null) {
             interstitialAd = new ADXiluInterstitialAd(activity);
             interstitialAd.setLocalExtraParams(new ADXiluExtraParams.Builder()
@@ -343,7 +333,7 @@ public class XiluAdModule extends UniModule {
 
                 @Override
                 public void onAdReady(ADXiluInterstitialAdInfo adInfo) {
-                    // 部分渠道不会回调该方法，请在 onAdReceive 做广告展示处理
+                    // 部分渠道不会回调该方法，请在 onAdReceive 做广告展示处理。
                     emit(interstitialCb, "onAdReady", null);
                 }
 
