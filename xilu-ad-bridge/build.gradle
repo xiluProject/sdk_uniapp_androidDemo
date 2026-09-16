@@ -1,0 +1,52 @@
+// Xilu-AD 桥接层：唯一需要开发的 AAR（XiluADUniPlugin.aar）
+// uni 离线 SDK 与 15 个业务 AAR 全部 compileOnly：运行时分别由基座与插件目录提供
+// libs_uni/uniapp-v8-release.aar 为 DCloud 5.24 真身（io.dcloud.feature.uniapp.* 包名）
+plugins {
+    id 'com.android.library' version '8.9.1'
+}
+
+android {
+    namespace 'com.xilu.sdk.uni'
+    compileSdk 36
+    buildToolsVersion '36.1.0'
+
+    defaultConfig {
+        minSdk 24
+        consumerProguardFiles 'consumer-rules.pro'
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    // 产物命名：XiluADUniPlugin-release.aar
+    libraryVariants.all { variant ->
+        variant.outputs.all {
+            outputFileName = "XiluADUniPlugin-${variant.name}.aar"
+        }
+    }
+}
+
+dependencies {
+    // uni 插件运行时（stub jar，仅编译期）
+    compileOnly fileTree(dir: 'libs_uni', include: ['*.jar', '*.aar'])
+    // 15 业务 AAR + 华为/荣耀 OAID（仅编译期，运行时由插件 android/ 目录提供）
+    // 引用共享 vendor 目录，避免与 xilu-uni-demo/nativeplugins 重复存储
+    compileOnly fileTree(dir: "${rootProject.projectDir}/../vendor/xilu", include: ['*.aar'])
+    // uni 引擎数据协议（基座内置 fastjson）
+    compileOnly 'com.alibaba:fastjson:1.2.83'
+    // androidx（基座内置：SDK 构造器重载引用 Fragment/注解）
+    compileOnly 'androidx.annotation:annotation:1.8.0'
+    compileOnly 'androidx.fragment:fragment:1.6.2'
+}
+
+// 构建完成后自动将 bridge AAR 复制到共享 vendor 目录
+// 运行方式：./gradlew assembleRelease copyToPlugin
+task copyToPlugin(type: Copy) {
+    description = '复制 bridge AAR 到 vendor/xilu/'
+    from layout.buildDirectory.dir('outputs/aar')
+    into "${rootProject.projectDir}/../vendor/xilu"
+    include 'XiluADUniPlugin-release.aar'
+}
+copyToPlugin.dependsOn { assembleRelease }

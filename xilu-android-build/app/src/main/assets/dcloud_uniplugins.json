@@ -1,0 +1,33 @@
+{
+    "nativePlugins": [
+        {
+            "plugins": [
+                {
+                    "type": "module",
+                    "name": "Xilu-AD",
+                    "class": "com.xilu.sdk.uni.XiluAdModule"
+                },
+                {
+                    "type": "component",
+                    "name": "xilu-banner",
+                    "class": "com.xilu.sdk.uni.XiluBannerComponent"
+                },
+                {
+                    "type": "component",
+                    "name": "xilu-native-express",
+                    "class": "com.xilu.sdk.uni.XiluNativeExpressComponent"
+                },
+                {
+                    "type": "component",
+                    "name": "xilu-native-feed",
+                    "class": "com.xilu.sdk.uni.XiluNativeFeedComponent"
+                },
+                {
+                    "type": "component",
+                    "name": "xilu-draw-vod",
+                    "class": "com.xilu.sdk.uni.XiluDrawVodComponent"
+                }
+            ]
+        }
+    ]
+}

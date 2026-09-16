@@ -1,0 +1,43 @@
+# Build outputs
+**/build/
+**/.gradle/
+**/local.properties
+**/gradle.properties
+*.log
+*.apk
+*.aar
+
+# Uniapp build outputs
+**/unpackage/
+**/.hbuilderx/
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node modules
+node_modules/
+
+# Gradle wrapper
+gradle/wrapper/gradle-wrapper.jar
+
+# Keystore and signing related
+**/keystore/
+**/*.keystore
+**/*.jks
+**/signing*
+**/*sign*
+
+# Patched libs
+**/patched-libs/
+
+# Distribution
+**/dist/
+
+# Lock files
+*.lock

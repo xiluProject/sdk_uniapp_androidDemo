@@ -1,0 +1,134 @@
+<template>
+    <list class="page">
+        <!-- 信息流模板（列表）：每 5 条普通数据插 1 条广告
+             每个广告位独立管理自己的成败（item.failed），一个广告位失败不影响其它广告位 -->
+        <cell v-for="(item, idx) in items" :key="idx">
+            <view v-if="item.ad && !item.failed" class="ad-box" :style="{ height: adHeight + 'px' }">
+                <xilu-native-express :posId="posId" :sceneId="sceneId" :muted="muted" :count="count"
+                    :onlySupportPlatform="onlySupportPlatform"
+                    :style="{ width: '750rpx', height: adHeight + 'px' }"
+                    @onAdReceive="onEvent" @onAdRender="onRender" @onAdExpose="onEvent"
+                    @onAdClick="onEvent" @onAdClose="onAdClose"
+                    @onAdFailed="onAdFailed" @onRenderFailed="onAdFailed" />
+            </view>
+            <view v-else-if="item.ad" class="ad-box ad-empty" :style="{ height: adHeight + 'px' }">
+                <text class="ad-empty-text">暂无广告</text>
+            </view>
+            <view v-else class="row">
+                <text class="row-text">{{ item.text }}</text>
+            </view>
+        </cell>
+    </list>
+</template>
+
+<script>
+import { POS, NATIVE, handleAdFailed } from '@/utils/xilu-ad'
+
+export default {
+    data() {
+        return {
+            // 参数全部取自 utils/xilu-ad.js 的 NATIVE
+            // NATIVE_AD_POS_ID2（与单条同 ID）
+            posId: POS.nativeTemplate,
+            sceneId: NATIVE.SCENE_ID,
+            muted: NATIVE.PLAY_WITH_MUTE,
+            count: NATIVE.COUNT_LIST,
+            onlySupportPlatform: NATIVE.ONLY_SUPPORT_PLATFORM,
+            items: [],
+            adHeight: 400,
+            // 广告位序号：事件回调无法区分是哪个组件触发的，按广告位出现顺序依次编号并顺序消费
+            adCursor: 0
+        }
+    },
+    onLoad() {
+        this.buildItems()
+    },
+    methods: {
+        buildItems() {
+            // mockNormalDataRequest 造 20 条普通数据，
+            // 然后 int index = i * 5; 依次把广告插入到下标 0、5
+            const list = []
+            for (let i = 1; i <= 20; i++) {
+                list.push({ text: '模拟的普通数据 : ' + i })
+            }
+            list.splice(0, 0, { ad: true, failed: false })
+            list.splice(5, 0, { ad: true, failed: false })
+            this.items = list
+            this.adCursor = 0
+        },
+        /** 广告位下标（按出现顺序） */
+        adSlotIndexes() {
+            const out = []
+            for (let i = 0; i < this.items.length; i++) {
+                if (this.items[i].ad) out.push(i)
+            }
+            return out
+        },
+        /** 只收起下一个待处理的广告位，其它广告位不受影响 */
+        failNextAdSlot() {
+            const slots = this.adSlotIndexes()
+            const idx = slots[this.adCursor]
+            this.adCursor++
+            if (idx !== undefined) {
+                this.$set(this.items, idx, Object.assign({}, this.items[idx], { failed: true }))
+            }
+        },
+        reload() {
+            this.buildItems()
+        },
+        onRender(e) {
+            const d = (e && e.detail) || e || {}
+            const h = d.height || 0
+            if (h > 0) {
+                this.adHeight = h
+            }
+        },
+        onAdClose() {
+            // 广告关闭：只收起被关闭的那一个广告位
+            this.failNextAdSlot()
+        },
+        onAdFailed(e) {
+            // 失败提示由 utils/xilu-ad.js 的 AD_TOAST.ERROR 统一控制
+            handleAdFailed('native-list', e)
+            this.failNextAdSlot()
+        },
+        onEvent(e) {
+            console.log('native express list event:', (e && e.type) || '')
+        }
+    }
+}
+</script>
+
+<style>
+.page {
+    padding: 0;
+}
+
+.ad-box {
+    width: 750rpx;
+    background-color: #f5f5f5;
+}
+
+.ad-empty {
+    justify-content: center;
+    align-items: center;
+    background-color: #fafafa;
+}
+
+.ad-empty-text {
+    font-size: 26rpx;
+    color: #bbbbbb;
+}
+
+.row {
+    padding: 30rpx 24rpx;
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+    border-bottom-color: #eeeeee;
+}
+
+.row-text {
+    font-size: 28rpx;
+    color: #333333;
+}
+</style>

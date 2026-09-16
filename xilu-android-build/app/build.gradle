@@ -1,0 +1,158 @@
+apply plugin: 'com.android.application'
+
+// uni 离线 SDK libs（5.24，须≥HBuilderX编译器版本5.24，否则appkey校验失败）与 Xilu-AD 插件 AAR 目录
+// 使用相对路径，避免硬编码绝对路径（换机器/用户不会挂）
+def sdkLibsDir = file("${rootProject.projectDir}/../vendor/uni-offline-sdk/Android-SDK@5.24.82669_20260813/SDK/libs")
+// Xilu AAR 统一来源：bridge + Core + 6 Adapter + 6 三方底包 + 华为/荣耀 OAID（共 16 个）
+def xiluAarDir = file("${rootProject.projectDir}/../vendor/xilu")
+
+// ── 打包期补丁：静默 DCloud uni-AD 的服务端提示（-9001/-9002 那条）──
+// 这条提示由服务端下发，且**分成两个引擎各弹一次**：
+//   ① 视图层（webview）→ NativeUIFeatureImpl.execute → io.dcloud.p.g0 等  ——在 lib.5plus.base
+//   ② 服务层（weex 引擎，:jse 进程）→ WXModalUIModule.toast(fastjson)        ——在 uniapp-v8
+// 项目不用 uni-AD、也未在 uni-AD 后台绑包名，于是两条都会弹（实测 9002 走①，9001 走②）。
+// JS 层拦不到（框架 JS 自己作用域内调用），文本也不在本地，所以在原生收口处按内容过滤。
+def patchTargets = [
+        [aar: 'lib.5plus.base-release.aar', expect: 5],   // NativeUI(2) + g0 + c$a + ToastCompat + PdrUtil
+        [aar: 'uniapp-v8-release.aar',      expect: 1],   // WXModalUIModule
+]
+def patchedLibsDir = file("${rootProject.projectDir}/patched-libs")
+// ASM 从 Gradle 缓存里取（离线可用；不引新仓库）
+def asmJars = fileTree("${System.properties['user.home']}/.gradle/caches/modules-2/files-2.1/org.ow2.asm") {
+    include '**/asm-9*.jar', '**/asm-tree-9*.jar'
+}.files.findAll { !it.name.contains('sources') }
+
+tasks.register('compileAdToastPatcher', JavaCompile) {
+    source = fileTree("${rootProject.projectDir}/tools") { include 'AdToastPatcher.java' }
+    classpath = files(asmJars)
+    destinationDirectory = layout.buildDirectory.dir('patcher-classes')
+    options.encoding = 'UTF-8'
+}
+
+def patchedAars = []
+patchTargets.eachWithIndex { t, idx ->
+    def name = t.aar
+    def out = file("${patchedLibsDir}/${name}")
+    patchedAars << out
+    tasks.register("patchDcloudAdToast${idx}", JavaExec) {
+        dependsOn 'compileAdToastPatcher'
+        classpath = files(asmJars) + files(layout.buildDirectory.dir('patcher-classes'))
+        mainClass = 'AdToastPatcher'
+        args file("${sdkLibsDir}/${name}").absolutePath, out.absolutePath, "${t.expect}"
+        inputs.file(file("${sdkLibsDir}/${name}"))
+        outputs.file(out)
+    }
+}
+tasks.named('preBuild') { dependsOn tasks.withType(JavaExec).matching { it.name.startsWith('patchDcloudAdToast') } }
+
+// 必须配置（FileProvider authorities 引用）
+def mfph = [
+    "apk.applicationId": "com.qunze.xiju",
+]
+
+android {
+    namespace = "com.qunze.xiju"
+    compileSdkVersion 36
+
+    defaultConfig {
+        applicationId "com.qunze.xiju"
+        minSdkVersion 24          // Xilu-AD 插件要求 24
+        targetSdkVersion 34
+        versionCode 100
+        versionName "1.0.0"
+        multiDexEnabled true
+        manifestPlaceholders = mfph
+        ndk {
+            abiFilters 'armeabi-v7a', 'arm64-v8a'
+        }
+    }
+
+    // 与原生 Demo（android_demo_jdk8）使用同一份签名证书。
+    // 关键：穿山甲等平台按「APK 签名 SHA1」校验媒体平台授权，用默认 debug keystore 会被拒
+    // （日志：error=40021 apk签名SHA1值与媒体平台录入的SHA1不一致），
+    // 进而整条聚合报"所有三方竞价广告位均没有获取到广告"。
+    signingConfigs {
+        xilu {
+            storeFile file('keystore/xilu_release.keystore')
+            storePassword 'xilu123'
+            keyAlias 'release'
+            keyPassword 'xilu123'
+        }
+    }
+
+    buildTypes {
+        debug {
+            minifyEnabled false
+            signingConfig signingConfigs.xilu
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+        release {
+            minifyEnabled false    // 开启前先补全 proguard-rules.pro
+            signingConfig signingConfigs.xilu
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    // 此处配置必须添加 否则无法正确运行（uni 官方要求）
+    aaptOptions {
+        additionalParameters '--auto-add-overlay'
+        ignoreAssetsPattern "!.svn:!.git:.*:!CVS:!thumbs.db:!picasa.ini:!*.scc:*~"
+    }
+
+    // WeexCore 多进程 JS 引擎要求 so 解压到磁盘（否则 spinWaitPeer timeout → 白屏）
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging true
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+// AGP 8+ 启用 v1(JAR) 签名：DCloud 离线打包部分模块仍按 v1 读取证书，
+// 且老机型（API 24~27）只认 v1；官方示例要求 v1+v2 同时开启。
+android.signingConfigs.xilu.enableV1Signing = true
+android.signingConfigs.xilu.enableV2Signing = true
+
+repositories {
+    flatDir {
+        dirs sdkLibsDir, xiluAarDir
+    }
+}
+
+dependencies {
+    // uni 离线 SDK 基础运行时（5.24）：lib.5plus.base 与 uniapp-v8 用补丁后的副本
+    // （见上方 patchDcloudAdToast* 任务），breakpad 崩溃捕获、gif 解码直接用原包
+    implementation fileTree(include: [
+        'breakpad-build-release.aar',
+        'android-gif-drawable-1.2.29.aar'
+    ], dir: sdkLibsDir)
+    implementation files(patchedAars)
+
+    // Xilu-AD 插件全套 16 个 AAR（桥接 + Core + 6 Adapter + 6 三方底包 + 华为/荣耀 OAID）
+    implementation fileTree(dir: xiluAarDir, include: ['*.aar'])
+
+    // uni 基础依赖（参照官方 UniMP Demo）
+    implementation "androidx.recyclerview:recyclerview:1.1.0"
+    implementation "androidx.legacy:legacy-support-v4:1.0.0"
+    implementation "androidx.appcompat:appcompat:1.1.0"
+    implementation 'com.alibaba:fastjson:1.2.83'
+    implementation 'com.facebook.fresco:fresco:3.4.0'
+    implementation 'com.facebook.fresco:animated-gif:3.4.0'
+    implementation 'com.facebook.fresco:webpsupport:3.4.0'
+    implementation 'com.facebook.fresco:animated-webp:3.4.0'
+    implementation 'com.github.bumptech.glide:glide:4.9.0'
+    annotationProcessor 'com.github.bumptech.glide:compiler:4.9.0'
+    implementation 'com.squareup.okhttp3:okhttp:3.12.1'
+    implementation 'com.google.code.gson:gson:2.8.5'
+    implementation 'androidx.webkit:webkit:1.5.0'
+    // MS(美数) AAR 布局引用 CardView 属性，需显式引入
+    implementation 'androidx.cardview:cardview:1.0.0'
+    implementation 'com.google.android.material:material:1.0.0'
+    implementation 'androidx.core:core-ktx:1.10.0'
+    implementation 'androidx.core:core:1.6.0'
+}
+

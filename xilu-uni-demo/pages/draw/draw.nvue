@@ -1,0 +1,79 @@
+<template>
+    <scroll-view class="page" scroll-y="true">
+        <!-- Draw 视频信息流：posId = DRAW_VOD_AD_POS_ID
+             注意：原生 Demo 的菜单里进不去这个页面（MainActivity 无引用），本页把它补全 -->
+        <view class="ad-box" :style="{ height: adHeight + 'px' }">
+            <xilu-draw-vod v-if="show" :posId="posId" :count="count" :onlySupportPlatform="onlySupportPlatform"
+                :style="{ width: '750rpx', height: adHeight + 'px' }"
+                @onAdReceive="onEvent" @onAdRender="onRender" @onAdExpose="onEvent"
+                @onAdClick="onEvent" @onAdClose="onEvent"
+                @onAdFailed="onEvent" @onRenderFailed="onEvent"
+                @onVideoStart="onEvent" @onVideoPause="onEvent"
+                @onVideoComplete="onEvent" @onVideoError="onEvent" />
+        </view>
+        <button class="btn" @click="reload">{{ show ? '重新加载' : '加载 Draw 视频信息流' }}</button>
+    </scroll-view>
+</template>
+
+<script>
+import { POS, DRAW, handleAdFailed } from '@/utils/xilu-ad'
+
+export default {
+    data() {
+        return {
+            // 参数全部取自 utils/xilu-ad.js 的 DRAW
+            // DRAW_VOD_AD_POS_ID（= DRAW_VOD_AD_POS_ID1）
+            posId: POS.draw,
+            count: DRAW.COUNT,
+            onlySupportPlatform: DRAW.ONLY_SUPPORT_PLATFORM,
+            show: false,
+            // Draw 的 adSize 宽高都必须 > 0，容器占满一屏
+            adHeight: 900
+        }
+    },
+    onLoad() {
+        this.show = true
+    },
+    methods: {
+        reload() {
+            this.show = false
+            this.$nextTick(() => {
+                this.show = true
+            })
+        },
+        onRender(e) {
+            const d = (e && e.detail) || e || {}
+            const h = d.height || 0
+            if (h > 0) {
+                this.adHeight = h
+            }
+        },
+        onEvent(e) {
+            const ev = (e && e.type) || (e && e.detail && e.detail.type) || ''
+            console.log('draw vod event:', ev)
+            if (ev === 'onAdFailed' || ev === 'onRenderFailed') {
+                // 失败提示由 utils/xilu-ad.js 的 AD_TOAST.ERROR 统一控制
+                handleAdFailed('draw', e)
+                this.show = false
+            } else if (ev === 'onAdClose') {
+                this.show = false
+            }
+        }
+    }
+}
+</script>
+
+<style>
+.page {
+    padding: 0;
+}
+
+.ad-box {
+    width: 750rpx;
+    background-color: #f5f5f5;
+}
+
+.btn {
+    margin: 24rpx;
+}
+</style>

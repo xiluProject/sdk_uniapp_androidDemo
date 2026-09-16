@@ -1,0 +1,9 @@
+<!-- 与 SDK 自带参考样例 (.../SDK/assets/data/dcloud_control.xml) 保持一致：
+     不要写 debug/syncDebug。基座里 BaseInfo.parseControl() 会把
+     ISDEBUG = syncDebug || debug，一旦为 true 运行时会按“自定义调试基座”处理，
+     启动即弹“当前应用运行在自定义调试基座中，发布正式版请打包时不要勾…”提示。 -->
+<hbuilder>
+    <apps>
+        <app appid="__UNI__F1B6163" appver="1.0.0"/>
+    </apps>
+</hbuilder>

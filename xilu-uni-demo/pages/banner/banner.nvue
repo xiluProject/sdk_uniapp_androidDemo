@@ -1,0 +1,69 @@
+<template>
+    <view class="page">
+        <view style="width:750rpx; height:128rpx;">
+            <!-- 必须显式宽高；onAdFailed 隐藏容器、onAdClose 后重新加载 -->
+            <xilu-banner v-if="show" style="width:750rpx; height:128rpx;" :posId="posId" :sceneId="sceneId"
+                :onlySupportPlatform="onlySupportPlatform" :refreshInterval="refreshInterval"
+                :adShakeDisable="adShakeDisable"
+                @onAdReceive="onEvent" @onAdExpose="onEvent" @onAdClick="onEvent"
+                @onAdClose="onEvent" @onAdFailed="onEvent" />
+        </view>
+        <button class="btn" @click="reload">{{ show ? '重新加载' : '加载广告' }}</button>
+    </view>
+</template>
+
+<script>
+import { POS, BANNER, handleAdFailed } from '@/utils/xilu-ad'
+
+export default {
+    data() {
+        return {
+            // 参数全部取自 utils/xilu-ad.js 的 BANNER
+            posId: POS.banner,
+            sceneId: BANNER.SCENE_ID,
+            onlySupportPlatform: BANNER.ONLY_SUPPORT_PLATFORM,
+            refreshInterval: BANNER.AUTO_REFRESH_INTERVAL,
+            adShakeDisable: BANNER.AD_SHAKE_DISABLE,
+            show: false
+        }
+    },
+    methods: {
+        reload() {
+            this.show = false
+            // 同一个 ADXiluBannerAd 只有一次 loadAd 有效，重建组件实例（v-if 切换）触发重新 loadAd
+            this.$nextTick(() => {
+                this.show = true
+            })
+        },
+        onEvent(e) {
+            const ev = e.type || ''
+            console.log('banner event:', ev)
+            if (ev === 'onAdFailed') {
+                // 加载失败：隐藏容器
+                this.show = false
+                // 失败提示由 utils/xilu-ad.js 的 AD_TOAST.ERROR 统一控制
+                handleAdFailed('banner', e)
+            } else if (ev === 'onAdClose') {
+                // 广告关闭：组件已自动 release，隐藏容器
+                this.show = false
+            }
+        }
+    },
+    onUnload() {
+        // 离开页面必须销毁组件（触发 XiluBannerComponent.destroy → release）：
+        // SDK 的 banner 自刷新（默认 30s，SDK 侧强制、关不掉）不会因为页面不可见而停止，
+        // 不释放就等于让广告在后台持续刷新渲染（WebView/EGL 线程反复起停）。
+        this.show = false
+    }
+}
+</script>
+
+<style>
+.page {
+    padding: 24rpx;
+}
+
+.btn {
+    margin-top: 24rpx;
+}
+</style>

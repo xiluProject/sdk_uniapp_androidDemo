@@ -1,0 +1,79 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- 基础权限；广告三方 SDK 的权限（QUERY_ALL_PACKAGES 等）由 AAR Manifest 自动合并 -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <application
+        android:allowBackup="true"
+        android:allowClearUserData="true"
+        android:allowNativeHeapPointerTagging="false"
+        android:extractNativeLibs="true"
+        android:icon="@mipmap/icon"
+        android:label="@string/app_name"
+        android:largeHeap="true"
+        android:supportsRtl="true"
+        tools:replace="android:allowBackup,android:allowNativeHeapPointerTagging,android:extractNativeLibs">
+
+        <!-- 离线打包 appkey（必填）：dev.dcloud.net.cn → 应用 __UNI__F1B6163 → 各平台信息
+             注意：appkey 与「appid + 包名 + 签名 SHA1」绑定，
+             更换签名证书（keystore/xilu_release.keystore，SHA1 6B:02:37:...:5C:37）后必须重新申请。 -->
+        <meta-data
+            android:name="dcloud_appkey"
+            android:value="ed1427c022d6d453f6e6437e31ff3bb2" />
+
+        <!-- 关闭 DCloud 原生「服务协议和隐私政策」模板提示框（template/none）
+             优先读取 www/androidPrivacy.json 的 prompt 字段，此处为双保险 -->
+        <meta-data
+            android:name="DCLOUD_PRIVACY_PROMPT"
+            android:value="none" />
+
+        <activity
+            android:name="io.dcloud.PandoraEntryActivity"
+            android:configChanges="orientation|keyboardHidden|screenSize|mcc|mnc|fontScale|keyboard"
+            android:exported="true"
+            android:hardwareAccelerated="true"
+            android:launchMode="singleTask"
+            android:screenOrientation="user"
+            android:theme="@style/DCloudTheme"
+            android:windowSoftInputMode="adjustResize">
+        </activity>
+
+        <activity
+            android:name="io.dcloud.PandoraEntry"
+            android:configChanges="orientation|keyboardHidden|keyboard|navigation"
+            android:exported="true"
+            android:hardwareAccelerated="true"
+            android:label="@string/app_name"
+            android:launchMode="singleTask"
+            android:screenOrientation="user"
+            android:theme="@style/TranslucentTheme"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- 开屏页 XiluSplashActivity 由桥接 AAR 的 Manifest 自动合并 -->
+
+        <provider
+            android:name="io.dcloud.common.util.DCloud_FileProvider"
+            android:authorities="${apk.applicationId}.dc.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/dcloud_file_provider" />
+        </provider>
+    </application>
+</manifest>

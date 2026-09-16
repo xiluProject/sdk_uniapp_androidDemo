@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      开屏页主题：不要在这里写 android:windowFullscreen。
+      它给的是老的 FLAG_FULLSCREEN 模型，会和代码里的
+      setDecorFitsSystemWindows(false) + WindowInsetsController.hide()（API 30+）冲突，
+      部分 ROM 上状态栏会被重新"请回来"；全屏/沉浸统一由
+      XiluSplashActivity#applyFullScreen() 在代码里设置。
+      系统栏颜色/切角也由代码设置，这里不重复声明。
+    -->
+    <!-- parent 用框架主题：XiluSplashActivity extends android.app.Activity（非 AppCompat），
+         这样 AAR 资源链接期不依赖 androidx.appcompat 的资源，插件保持零资源依赖。 -->
+    <style name="XiluSplashTheme" parent="@android:style/Theme.DeviceDefault.Light.NoActionBar">
+        <!-- 启动窗口底色：避免第一帧闪黑 -->
+        <item name="android:windowBackground">@color/xilu_splash_bg</item>
+        <item name="android:windowAnimationStyle">@null</item>
+    </style>
+</resources>

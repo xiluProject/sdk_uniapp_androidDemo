@@ -1,0 +1,77 @@
+{
+    "pages": [
+        {
+            "path": "pages/index/index",
+            "style": {
+                "navigationBarTitleText": "XiluAD Demo"
+            }
+        },
+        {
+            "path": "pages/splash/splash",
+            "style": {
+                "navigationBarTitleText": "开屏广告"
+            }
+        },
+        {
+            "path": "pages/reward/reward",
+            "style": {
+                "navigationBarTitleText": "激励视频广告"
+            }
+        },
+        {
+            "path": "pages/interstitial/interstitial",
+            "style": {
+                "navigationBarTitleText": "插屏广告"
+            }
+        },
+        {
+            "path": "pages/fullscreen/fullscreen",
+            "style": {
+                "navigationBarTitleText": "全屏视频广告"
+            }
+        },
+        {
+            "path": "pages/banner/banner",
+            "style": {
+                "navigationBarTitleText": "Banner广告",
+                "disableScroll": true
+            }
+        },
+        {
+            "path": "pages/native/native",
+            "style": {
+                "navigationBarTitleText": "信息流模板（单条）"
+            }
+        },
+        {
+            "path": "pages/native-list/native-list",
+            "style": {
+                "navigationBarTitleText": "信息流模板（列表）"
+            }
+        },
+        {
+            "path": "pages/feed/feed",
+            "style": {
+                "navigationBarTitleText": "信息流自渲染"
+            }
+        },
+        {
+            "path": "pages/draw/draw",
+            "style": {
+                "navigationBarTitleText": "Draw视频信息流"
+            }
+        },
+        {
+            "path": "pages/feed-list/feed-list",
+            "style": {
+                "navigationBarTitleText": "信息流自渲染（列表）"
+            }
+        }
+    ],
+    "globalStyle": {
+        "navigationBarTextStyle": "black",
+        "navigationBarTitleText": "XiluAD Demo",
+        "navigationBarBackgroundColor": "#F8F8F8",
+        "backgroundColor": "#F8F8F8"
+    }
+}

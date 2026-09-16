@@ -1,0 +1,146 @@
+<template>
+    <list class="page">
+        <!-- 信息流自渲染（列表）：每 5 条普通数据插 1 条广告
+             卡片由插件内原生 View 拼出，交互注册在真实原生 View 上。
+             每个广告位独立管理自己的成败（item.failed），一个广告位没填充
+             不会影响其它广告位，也不会让整张列表的广告一起消失。 -->
+        <cell v-for="(item, idx) in items" :key="idx">
+            <view v-if="item.ad && !item.failed" class="ad-box" :style="{ height: adHeight + 'px' }">
+                <xilu-native-feed :posId="posId" :sceneId="sceneId" :muted="muted" :count="count"
+                    :onlySupportPlatform="onlySupportPlatform"
+                    :style="{ width: '750rpx', height: adHeight + 'px' }"
+                    @onAdReceive="onEvent" @onAdRender="onRender" @onAdExpose="onEvent"
+                    @onAdClick="onEvent" @onAdClose="onAdClose"
+                    @onAdFailed="onAdFailed" @onRenderFailed="onAdFailed"
+                    @onVideoStart="onEvent" @onVideoPause="onEvent"
+                    @onVideoComplete="onEvent" @onVideoError="onEvent" />
+            </view>
+            <view v-else-if="item.ad" class="ad-box ad-empty" :style="{ height: adHeight + 'px' }">
+                <text class="ad-empty-text">暂无广告</text>
+            </view>
+            <view v-else class="row">
+                <text class="row-text">{{ item.text }}</text>
+            </view>
+        </cell>
+    </list>
+</template>
+
+<script>
+import { POS, NATIVE, handleAdFailed } from '@/utils/xilu-ad'
+
+export default {
+    data() {
+        return {
+            // 参数全部取自 utils/xilu-ad.js 的 NATIVE
+            // NATIVE_AD_POS_ID4（与单条同 ID）
+            posId: POS.nativeSelfRender,
+            sceneId: NATIVE.SCENE_ID,
+            muted: NATIVE.PLAY_WITH_MUTE,
+            count: NATIVE.COUNT_LIST,
+            onlySupportPlatform: NATIVE.ONLY_SUPPORT_PLATFORM,
+            items: [],
+            adHeight: 480,
+            // 广告位序号：事件回调里无法区分是哪个 <xilu-native-feed> 触发的，
+            // 这里按广告位出现的先后顺序依次编号（第 1 个广告位 = 0，第 2 个 = 1……），
+            // 回调按发生顺序消费，保证「谁失败只影响谁」。
+            adCursor: 0
+        }
+    },
+    onLoad() {
+        this.buildItems()
+    },
+    methods: {
+        buildItems() {
+            // 20 条普通数据 + int index = i * 5 插入广告
+            const list = []
+            for (let i = 1; i <= 20; i++) {
+                list.push({ text: '模拟的普通数据 : ' + i })
+            }
+            list.splice(0, 0, { ad: true, failed: false })
+            list.splice(5, 0, { ad: true, failed: false })
+            this.items = list
+            this.adCursor = 0
+        },
+        adSlotIndexes() {
+            const out = []
+            for (let i = 0; i < this.items.length; i++) {
+                if (this.items[i].ad) out.push(i)
+            }
+            return out
+        },
+        /** 只让下一个待处理的广告位失败，其它广告位不受影响 */
+        failNextAdSlot() {
+            const slots = this.adSlotIndexes()
+            const idx = slots[this.adCursor]
+            this.adCursor++
+            if (idx !== undefined) {
+                this.$set(this.items, idx, Object.assign({}, this.items[idx], { failed: true }))
+            }
+        },
+        /** 关闭同样只收起被关的那一个广告位 */
+        closeNextAdSlot() {
+            const slots = this.adSlotIndexes()
+            const idx = slots[this.adCursor]
+            this.adCursor++
+            if (idx !== undefined) {
+                this.$set(this.items, idx, Object.assign({}, this.items[idx], { failed: true }))
+            }
+        },
+        reload() {
+            this.buildItems()
+        },
+        onRender(e) {
+            const d = (e && e.detail) || e || {}
+            const h = d.height || 0
+            if (h > 0) {
+                this.adHeight = h
+            }
+        },
+        onAdClose() {
+            this.closeNextAdSlot()
+        },
+        onAdFailed(e) {
+            // 失败提示由 utils/xilu-ad.js 的 AD_TOAST.ERROR 统一控制
+            handleAdFailed('feed-list', e)
+            this.failNextAdSlot()
+        },
+        onEvent(e) {
+            console.log('native feed list event:', (e && e.type) || '')
+        }
+    }
+}
+</script>
+
+<style>
+.page {
+    padding: 0;
+}
+
+.ad-box {
+    width: 750rpx;
+    background-color: #f5f5f5;
+}
+
+.ad-empty {
+    justify-content: center;
+    align-items: center;
+    background-color: #fafafa;
+}
+
+.ad-empty-text {
+    font-size: 26rpx;
+    color: #bbbbbb;
+}
+
+.row {
+    padding: 30rpx 24rpx;
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+    border-bottom-color: #eeeeee;
+}
+
+.row-text {
+    font-size: 28rpx;
+    color: #333333;
+}
+</style>

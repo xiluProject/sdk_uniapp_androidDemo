@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  开屏页根布局：必须铺满整屏（含状态栏/导航栏区域），
+  否则窗口背景色会从系统栏位置透出来，表现为顶部/底部白条。
+  fl_splash_container 为广告容器，由 XiluSplashActivity#showAd() 传入 SDK。
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/fl_splash_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/xilu_splash_bg"
+    android:fitsSystemWindows="false">
+
+    <LinearLayout
+        android:id="@+id/ll_splash_column"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/xilu_splash_bg"
+        android:fitsSystemWindows="false"
+        android:orientation="vertical">
+
+        <FrameLayout
+            android:id="@+id/fl_splash_container"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+    </LinearLayout>
+</FrameLayout>

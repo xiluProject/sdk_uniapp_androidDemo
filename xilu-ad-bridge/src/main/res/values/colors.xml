@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 开屏页底色：与窗口背景一致，避免广告未渲染时闪白/白条 -->
+    <color name="xilu_splash_bg">#FFFFFFFF</color>
+</resources>

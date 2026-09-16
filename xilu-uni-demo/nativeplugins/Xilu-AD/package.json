@@ -1,0 +1,40 @@
+{
+    "id": "Xilu-AD",
+    "version": "1.0.0",
+    "name": "Xilu-AD",
+    "description": "XiluAD uni-app 原生插件（桥接 XiluSDKCore v1.0.8.4）",
+    "_dp_type": "nativeplugin",
+    "_dp_nativeplugin": {
+        "android": {
+            "minSdkVersion": "24",
+            "integrateType": "aar",
+            "plugins": [
+                {
+                    "type": "module",
+                    "name": "Xilu-AD",
+                    "class": "com.xilu.sdk.uni.XiluAdModule"
+                },
+                {
+                    "type": "component",
+                    "name": "xilu-banner",
+                    "class": "com.xilu.sdk.uni.XiluBannerComponent"
+                },
+                {
+                    "type": "component",
+                    "name": "xilu-native-express",
+                    "class": "com.xilu.sdk.uni.XiluNativeExpressComponent"
+                },
+                {
+                    "type": "component",
+                    "name": "xilu-native-feed",
+                    "class": "com.xilu.sdk.uni.XiluNativeFeedComponent"
+                },
+                {
+                    "type": "component",
+                    "name": "xilu-draw-vod",
+                    "class": "com.xilu.sdk.uni.XiluDrawVodComponent"
+                }
+            ]
+        }
+    }
+}

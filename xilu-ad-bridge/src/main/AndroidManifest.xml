@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <!-- 开屏页：整页放插件内，纯 Android 类（零 uni 依赖） -->
+        <activity
+            android:name="com.xilu.sdk.uni.XiluSplashActivity"
+            android:screenOrientation="portrait"
+            android:theme="@style/XiluSplashTheme" />
+    </application>
+
+</manifest>
