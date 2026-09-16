@@ -2,7 +2,6 @@
 **/build/
 **/.gradle/
 **/local.properties
-**/gradle.properties
 *.log
 *.apk
 
@@ -38,15 +37,8 @@ gradle/wrapper/gradle-wrapper.jar
 # Distribution
 **/dist/
 
-# Lock files
+# Lock files - ignore IDE/OS locks, keep package manager locks
 *.lock
-
-# Build aar files (but allow vendor/)
-**/build/**/*.aar
-**/patched-libs/**/*.aar
-**/dist/**/*.aar
-
-# Vendor SDK libs (allow)
-!vendor/**/*.aar
-!xilu-ad-bridge/libs_uni/**/*.aar
-!xilu-uni-demo/nativeplugins/**/*.aar
+!package-lock.json
+!yarn.lock
+!pnpm-lock.yaml
