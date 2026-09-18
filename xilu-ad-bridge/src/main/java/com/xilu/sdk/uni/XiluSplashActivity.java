@@ -382,6 +382,8 @@ public class XiluSplashActivity extends Activity {
     private void loadAd() {
         if (splashAd == null || adLoaded) return;
         if (btnLoad != null) btnLoad.setText("加载中...");
+        // 只有真正请求开屏，才允许热启动预加载/展示（避免只请求 banner 也去竞价开屏位）
+        XiluHotStartRouter.markSplashRequested();
         splashAd.loadOnly(posId);
     }
 

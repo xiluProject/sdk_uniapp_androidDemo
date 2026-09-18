@@ -1,3 +1,24 @@
 <resources>
     <string name="app_name">XiluAD Demo</string>
+
+    <!--
+      热启动/回前台时的"闪一下"：webview 还没画出第一帧之前，露出来的是 Activity 的 windowBackground。
+      DCloud 的 DCloudTheme 用的是 @color/ime_background = #CCCCCC（浅灰，深色模式下还可能更暗），
+      所以这里覆盖成和页面底色一致的白色，把这一层"底色闪"抹掉。
+      注意：如果换成白色后仍然"闪黑"，那就不是窗口背景这一层，而是 webview/Surface 重建时的黑帧
+      （那一层要改 webview 自己的背景，不是主题）。
+    -->
+    <style name="AppTheme" parent="@style/DCloudTheme">
+        <item name="android:windowBackground">@android:color/white</item>
+    </style>
+
+    <!--
+      点桌面图标热启动时"黑闪"的那一层：图标启动的是 LAUNCHER 那个瞬态壳 io.dcloud.PandoraEntry，
+      它用的 @style/TranslucentTheme 是透明窗口；系统给这个透明窗口做"从图标展开"的动画时，
+      底下没有内容 → 露出黑底，就是那一下黑闪（所以点图标会闪、用 am start 直接起主 Activity 不会闪）。
+      这里保留 translucency（DCloud 的壳要靠它交接），只把窗口背景改成白色，动画期间露出白色而不是黑。
+    -->
+    <style name="AppShellTheme" parent="@style/TranslucentTheme">
+        <item name="android:windowBackground">@android:color/white</item>
+    </style>
 </resources>

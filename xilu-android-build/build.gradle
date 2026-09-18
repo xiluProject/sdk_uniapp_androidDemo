@@ -19,5 +19,8 @@ allprojects {
         maven { url 'https://jitpack.io' }
         google()
         mavenCentral()
+        // 华为 OAID（com.huawei.hms:ads-identifier）与荣耀 OAID（com.hihonor.mcs:ads-identifier）
+        maven { url 'https://developer.huawei.com/repo/' }
+        maven { url 'https://developer.hihonor.com/repo/' }
     }
 }

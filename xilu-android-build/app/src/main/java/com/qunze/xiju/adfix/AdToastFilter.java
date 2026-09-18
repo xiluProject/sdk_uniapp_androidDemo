@@ -1,9 +1,6 @@
 package com.qunze.xiju.adfix;
 
 import android.util.Log;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.TextView;
 
 import org.json.JSONObject;
 
@@ -11,22 +8,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-/**
- * DCloud uni-AD 噪音提示过滤器（配合打包期字节码补丁 {@code tools/AdToastPatcher.java}）。
- *
- * <p>背景：项目不使用 uni-AD，但框架视图层 bundle（{@code view.umd.min.js}）里带 uni-AD 的 JS 模块，
- * 启动后会弹出服务端下发的「应用的uni-AD业务状态异常（-9001/-9002），请登录 … 处理」。
- * 该提示由服务端下发、且可能走多条原生通道，App 层 patch {@code uni.showToast} 拦不到（实测无效）。
- * 所以在原生各收口处按内容拦截：命中即提前 return，其它提示不受影响。
- *
- * <p>补丁插入的收口（见 AdToastPatcher）：
- * <ul>
- *   <li>{@code NativeUIFeatureImpl.execute(...)} —— NativeUI 总入口；</li>
- *   <li>{@code NativeUIFeatureImpl.a(IApp, IWebview, String, JSONObject)} —— toast 落地方法；</li>
- *   <li>{@code io.dcloud.p.g0.show()} —— DCloud 自定义 Toast 的显示方法（构造参数 / TextView / 整个视图树）；</li>
- *   <li>{@code io.dcloud.p.c$a.run()} —— 直接用 {@code Toast.makeText} 弹的那条。</li>
- * </ul>
- */
+/** DCloud uni-AD 噪音提示过滤器（配合打包期补丁 tools/AdToastPatcher.java） */
 public final class AdToastFilter {
 
     private static final String TAG = "AdToastFilter";
@@ -35,12 +17,14 @@ public final class AdToastFilter {
     private static final String[] SILENT_CODES = {"9001", "9002"};
 
     /**
-     * 文案特征：这条提示的正文固定是「应用的uni-AD业务状态异常（-90xx）…」，9001/9002 只差一个码。
-     * 服务端换码时按文案拦也不会漏，比只认码更稳。
+     * 文案特征：这条提示的正文固定是「应用的uni-AD业务状态异常（-90xx）…」。
+     * 服务端换码时按文案拦也不会漏，比只认码更稳；落地域名也当特征，换码/换措辞都能盖住。
      */
-    private static final String[] SILENT_TEXTS = {"uni-AD业务状态异常", "uni-ad业务状态异常"};
+    private static final String[] SILENT_TEXTS = {
+            "uni-AD业务状态异常", "uni-ad业务状态异常", "uniad.dcloud.net.cn"
+    };
 
-    /** 命中时打一条日志（同一段文本只打一次），便于真机核对；不需要时置 false */
+    /** 命中时打一条日志（同一段文本只打一次） */
     private static final boolean LOG_SILENCED = true;
 
     /** 诊断开关：把每次检查到的内容都打印出来（排查"漏网"时临时打开） */
@@ -71,71 +55,69 @@ public final class AdToastFilter {
         return options != null && containsSilentCode(options.toString(), "json");
     }
 
-    /**
-     * weex 引擎（uniapp-v8，跑在 :jse 进程）的 {@code WXModalUIModule.toast/alert/confirm/prompt}
-     * 用的是 fastjson，参数里带 message/内容 —— 9001 那条就是从这条通道弹出来的（实测）。
-     */
-    public static boolean shouldSilence(com.alibaba.fastjson.JSONObject options) {
-        return options != null && containsSilentCode(options.toString(), "wx-modal");
-    }
-
-    /** DCloud 自定义 Toast：文案可能放在 TextView 里（不一定是构造参数） */
-    public static boolean shouldSilence(TextView textView) {
-        if (textView == null) {
-            return false;
+    /** NativeUI 入口被调用时记录调用栈（同一栈只记一次） */
+    public static void noteToastEvent(String where) {
+        StringBuilder sb = new StringBuilder("toast-event ").append(where);
+        StackTraceElement[] st = new Throwable().getStackTrace();
+        for (int i = 1; i < Math.min(st.length, 10); i++) {
+            sb.append("\n    at ").append(st[i]);
         }
-        CharSequence cs = textView.getText();
-        return cs != null && containsSilentCode(cs.toString(), "textView");
-    }
-
-    /** DCloud 自定义 Toast：文案可能挂在 Toast 的整个视图树里（含调用方传入的 View） */
-    public static boolean shouldSilence(View view) {
-        if (view == null) {
-            return false;
+        if (LOGGED.add("evt|" + sb)) {
+            Log.i(TAG, sb.toString());
         }
-        if (view instanceof TextView && shouldSilence((TextView) view)) {
-            return true;
-        }
-        if (view instanceof ViewGroup) {
-            ViewGroup group = (ViewGroup) view;
-            for (int i = 0; i < group.getChildCount(); i++) {
-                if (shouldSilence(group.getChildAt(i))) {
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 
     private static boolean containsSilentCode(String text, String channel) {
         if (text == null || text.length() == 0) {
             return false;
         }
+        // 大小写无关：服务端/本地文案里 "uni-AD" 与 "uni-ad" 两种都出现过
+        String lower = text.toLowerCase(java.util.Locale.ROOT);
         String hit = null;
         for (String code : SILENT_CODES) {
-            if (text.contains(code)) {
+            if (lower.contains(code)) {
                 hit = code;
                 break;
             }
         }
         if (hit == null) {
             for (String frag : SILENT_TEXTS) {
-                if (text.contains(frag)) {
+                if (lower.contains(frag.toLowerCase(java.util.Locale.ROOT))) {
                     hit = frag;
                     break;
                 }
             }
         }
+        // 结构无关兜底：服务端文案的措辞/空格/数字全半角并不一致，只认码会漏，
+        // 只要出现这几个特征就丢弃。本工程不使用 uni-AD，不会误伤正常提示。
+        if (hit == null) {
+            if (lower.contains("uni-ad") || lower.contains("uniad") || lower.contains("业务状态异常")) {
+                hit = "uni-ad(兜底)";
+            }
+        }
         if (hit == null) {
             if (LOG_ALL && LOGGED.add("pass|" + channel + "|" + text)) {
-                Log.i(TAG, "pass (" + channel + "): " + text);
+                Log.i(TAG, "pass (" + channel + "): " + text + caller());
             }
             return false;
         }
         if (LOG_SILENCED && LOGGED.add(hit + "|" + text)) {
-            Log.i(TAG, "silenced (" + hit + ", " + channel + "): " + text);
+            Log.i(TAG, "silenced (" + hit + ", " + channel + "): " + text + caller());
         }
         return true;
+    }
+
+    /** 调用方栈（近几层），用于定位"谁在弹"；LOG_ALL=false 时不打，避免刷日志 */
+    private static String caller() {
+        if (!LOG_ALL) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        StackTraceElement[] st = new Throwable().getStackTrace();
+        for (int i = 2; i < Math.min(st.length, 8); i++) {
+            sb.append("\n    at ").append(st[i]);
+        }
+        return sb.toString();
     }
 
     private AdToastFilter() {

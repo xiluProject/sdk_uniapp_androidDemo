@@ -19,7 +19,7 @@ export default {
         load() {
             this.ready = false
             this.loading = true
-                // 参数全部取自 utils/xilu-ad.js 的 INTERSTITIAL
+            // 参数全部取自 utils/xilu-ad.js 的 INTERSTITIAL
             loadInterstitial({
                 posId: POS.interstitial,
                 muted: INTERSTITIAL.PLAY_WITH_MUTE,

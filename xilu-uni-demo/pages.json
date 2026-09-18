@@ -25,12 +25,6 @@
             }
         },
         {
-            "path": "pages/fullscreen/fullscreen",
-            "style": {
-                "navigationBarTitleText": "全屏视频广告"
-            }
-        },
-        {
             "path": "pages/banner/banner",
             "style": {
                 "navigationBarTitleText": "Banner广告",
@@ -53,12 +47,6 @@
             "path": "pages/feed/feed",
             "style": {
                 "navigationBarTitleText": "信息流自渲染"
-            }
-        },
-        {
-            "path": "pages/draw/draw",
-            "style": {
-                "navigationBarTitleText": "Draw视频信息流"
             }
         },
         {

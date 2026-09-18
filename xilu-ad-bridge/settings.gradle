@@ -7,6 +7,11 @@ pluginManagement {
         mavenCentral()
         gradlePluginPortal()
     }
+    // bridge 作为独立工程构建时用它定 AGP 版本（build.gradle 里的 plugins 块不带 version，
+    // 这样同一个文件被宿主工程 include 成子工程时也能直接用宿主的 AGP classpath）
+    plugins {
+        id 'com.android.library' version '8.9.1'
+    }
 }
 
 dependencyResolutionManagement {

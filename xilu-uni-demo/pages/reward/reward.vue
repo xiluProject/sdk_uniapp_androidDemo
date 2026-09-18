@@ -19,7 +19,7 @@ export default {
         load() {
             this.ready = false
             this.loading = true
-                // 参数全部取自 utils/xilu-ad.js 的 REWARD
+            // 参数全部取自 utils/xilu-ad.js 的 REWARD
             loadRewardVideo({
                 posId: POS.reward,
                 muted: REWARD.PLAY_WITH_MUTE,

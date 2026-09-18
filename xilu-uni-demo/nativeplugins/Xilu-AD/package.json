@@ -2,7 +2,7 @@
     "id": "Xilu-AD",
     "version": "1.0.0",
     "name": "Xilu-AD",
-    "description": "XiluAD uni-app 原生插件（桥接 XiluSDKCore v1.0.8.4）",
+    "description": "XiluAD uni-app 原生插件（桥接 XiluSDKCore v1.0.8.5）",
     "_dp_type": "nativeplugin",
     "_dp_nativeplugin": {
         "android": {
@@ -28,11 +28,6 @@
                     "type": "component",
                     "name": "xilu-native-feed",
                     "class": "com.xilu.sdk.uni.XiluNativeFeedComponent"
-                },
-                {
-                    "type": "component",
-                    "name": "xilu-draw-vod",
-                    "class": "com.xilu.sdk.uni.XiluDrawVodComponent"
                 }
             ]
         }

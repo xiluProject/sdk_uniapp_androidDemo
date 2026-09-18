@@ -32,6 +32,11 @@ import io.dcloud.feature.uniapp.annotation.UniJSMethod;
 /** Xilu-AD 桥接 Module：init / 激励视频 / 插屏 / 全屏视频 / 开屏。 */
 public class XiluAdModule extends UniModule {
 
+    static {
+        // 装自己的 SIGALRM 处理器：signal 14 不再能杀进程
+        SignalGuard.install();
+    }
+
     /** 激励视频：每次 load 重建实例（展示后须重新 load，load 前先 release 旧 adInfo）。 */
     private ADXiluRewardVodAd rewardAd;
     private ADXiluRewardVodAdInfo rewardAdInfo;
@@ -47,9 +52,7 @@ public class XiluAdModule extends UniModule {
     private ADXiluFullScreenVodAdInfo fullScreenAdInfo;
     private UniJSCallback fullScreenCb;
 
-    // ------------------------------------------------------------------
     // 统一事件出口：{ event, data }；页面销毁后静默丢弃
-    // ------------------------------------------------------------------
 
     void emit(UniJSCallback cb, String event, JSONObject data) {
         if (cb == null || mUniSDKInstance == null) return;
@@ -110,9 +113,7 @@ public class XiluAdModule extends UniModule {
         return true;
     }
 
-    // ------------------------------------------------------------------
     // init
-    // ------------------------------------------------------------------
     @UniJSMethod(uiThread = true)
     public void init(JSONObject o, final UniJSCallback cb) {
         // Xilu SDK 日志默认关闭（release 编译），宿主可按需开启 logDebug，tag 固定为 ADXiluLog。
@@ -121,7 +122,7 @@ public class XiluAdModule extends UniModule {
         ADXiluInitConfig.Builder builder = new ADXiluInitConfig.Builder()
                 .appId(o.getString("appId"))
                 .debug(bool(o, "debug", false))
-                // 【慎改】是否同意隐私政策，将禁用一切设备信息读起严重影响收益
+                // 是否同意隐私政策；置 false 会禁用设备信息读取
                 .agreePrivacyStrategy(bool(o, "agreePrivacyStrategy", false))
                 .isCanUseLocation(bool(o, "isCanUseLocation", true))
                 .isCanUsePhoneState(bool(o, "isCanUsePhoneState", true))
@@ -198,12 +199,9 @@ public class XiluAdModule extends UniModule {
         return ADXiluSdk.getInstance().isInit();
     }
 
-    // ------------------------------------------------------------------
     // 激励视频
-    // ------------------------------------------------------------------
 
-    // 【必须 uiThread=true】BaseXiluAd.loadAd() 校验 isMainThread()，非主线程直接回调
-    // onAdFailed(-20000 "必须在主线程获取广告")
+    // 必须 uiThread=true：SDK 校验主线程，否则回调 onAdFailed(-20000)
     @UniJSMethod(uiThread = true)
     public void loadRewardVideo(JSONObject o, UniJSCallback cb) {
         rewardCb = cb;
@@ -303,9 +301,7 @@ public class XiluAdModule extends UniModule {
         // 展示后的过程事件继续走 rewardCb
     }
 
-    // ------------------------------------------------------------------
     // 插屏
-    // ------------------------------------------------------------------
 
     @UniJSMethod(uiThread = true)
     public void loadInterstitial(JSONObject o, UniJSCallback cb) {
@@ -378,9 +374,7 @@ public class XiluAdModule extends UniModule {
         interstitialAdInfo.showInterstitial((Activity) mUniSDKInstance.getContext());
     }
 
-    // ------------------------------------------------------------------
     // 全屏视频
-    // ------------------------------------------------------------------
 
     @UniJSMethod(uiThread = true)
     public void loadFullScreenVod(JSONObject o, UniJSCallback cb) {
@@ -459,9 +453,7 @@ public class XiluAdModule extends UniModule {
         fullScreenAdInfo.showFullScreenVod((Activity) mUniSDKInstance.getContext());
     }
 
-    // ------------------------------------------------------------------
     // 开屏
-    // ------------------------------------------------------------------
 
     // 同时满足：SDK 主线程要求 + startActivity 必须在主线程
     @UniJSMethod(uiThread = true)
@@ -497,9 +489,7 @@ public class XiluAdModule extends UniModule {
         activity.startActivity(i);
     }
 
-    // ------------------------------------------------------------------
     // 页面销毁：释放三类广告数据
-    // ------------------------------------------------------------------
 
     @Override
     public void onActivityDestroy() {

@@ -30,9 +30,15 @@ gradle/wrapper/gradle-wrapper.jar
 **/*.jks
 **/signing*
 **/*sign*
+**/keystore.properties
+!**/keystore.properties.example
 
 # Patched libs
 **/patched-libs/
+
+# 构建期生成的 so：libweexcore 每轮构建重打，libweexjss 来自 uniapp-v8-release.aar
+**/jniLibs/**/libweexcore.so
+**/jniLibs/**/libweexjss.so
 
 # Distribution
 **/dist/

@@ -1,21 +1,24 @@
 <template>
     <list class="page">
-        <!-- 信息流自渲染（列表）：每 5 条普通数据插 1 条广告
-             卡片由插件内原生 View 拼出，交互注册在真实原生 View 上。
-             每个广告位独立管理自己的成败（item.failed），一个广告位没填充
-             不会影响其它广告位，也不会让整张列表的广告一起消失。 -->
+        <!-- 加载按钮置顶 -->
+        <cell>
+            <button class="btn" @click="reload">重新加载</button>
+        </cell>
+
+        <!-- 信息流自渲染（列表）：每 5 条普通数据插 1 条广告，卡片由插件内原生 View 拼出。
+             每个广告位独立成败（item.failed），一个没填充不影响其它；未就绪时该 cell 只占 1px + opacity 0。 -->
         <cell v-for="(item, idx) in items" :key="idx">
-            <view v-if="item.ad && !item.failed" class="ad-box" :style="{ height: adHeight + 'px' }">
+            <view v-if="item.ad && !item.failed" class="ad-box" :style="adBoxStyle">
                 <xilu-native-feed :posId="posId" :sceneId="sceneId" :muted="muted" :count="count"
                     :onlySupportPlatform="onlySupportPlatform"
-                    :style="{ width: '750rpx', height: adHeight + 'px' }"
+                    :style="adCompStyle"
                     @onAdReceive="onEvent" @onAdRender="onRender" @onAdExpose="onEvent"
                     @onAdClick="onEvent" @onAdClose="onAdClose"
                     @onAdFailed="onAdFailed" @onRenderFailed="onAdFailed"
                     @onVideoStart="onEvent" @onVideoPause="onEvent"
                     @onVideoComplete="onEvent" @onVideoError="onEvent" />
             </view>
-            <view v-else-if="item.ad" class="ad-box ad-empty" :style="{ height: adHeight + 'px' }">
+            <view v-else-if="item.ad" class="ad-box ad-empty" :style="{ height: AD_EMPTY_H + 'px' }">
                 <text class="ad-empty-text">暂无广告</text>
             </view>
             <view v-else class="row">
@@ -28,22 +31,40 @@
 <script>
 import { POS, NATIVE, handleAdFailed } from '@/utils/xilu-ad'
 
+// 广告渲染期间组件容器的高度（不可见，只为让渠道正常布局与测量）
+const PRE_RENDER_H = 600
+// "暂无广告"提示的高度（提示要看得见，所以给固定高度）
+const AD_EMPTY_H = 160
+
 export default {
     data() {
         return {
             // 参数全部取自 utils/xilu-ad.js 的 NATIVE
-            // NATIVE_AD_POS_ID4（与单条同 ID）
             posId: POS.nativeSelfRender,
             sceneId: NATIVE.SCENE_ID,
             muted: NATIVE.PLAY_WITH_MUTE,
             count: NATIVE.COUNT_LIST,
             onlySupportPlatform: NATIVE.ONLY_SUPPORT_PLATFORM,
             items: [],
-            adHeight: 480,
-            // 广告位序号：事件回调里无法区分是哪个 <xilu-native-feed> 触发的，
-            // 这里按广告位出现的先后顺序依次编号（第 1 个广告位 = 0，第 2 个 = 1……），
-            // 回调按发生顺序消费，保证「谁失败只影响谁」。
-            adCursor: 0
+            adHeight: 0,
+            adReady: false,
+            // 广告位序号：回调无法区分是哪个组件触发的，按出现顺序依次消费
+            adCursor: 0,
+            AD_EMPTY_H
+        }
+    },
+    computed: {
+        adBoxStyle() {
+            if (!this.adReady) {
+                return { width: '750rpx', height: '1px', opacity: 0 }
+            }
+            return { width: '750rpx', height: this.adHeight + 'px' }
+        },
+        adCompStyle() {
+            return {
+                width: '750rpx',
+                height: (this.adReady ? this.adHeight : PRE_RENDER_H) + 'px'
+            }
         }
     },
     onLoad() {
@@ -87,6 +108,7 @@ export default {
             }
         },
         reload() {
+            this.adReady = false
             this.buildItems()
         },
         onRender(e) {
@@ -94,6 +116,7 @@ export default {
             const h = d.height || 0
             if (h > 0) {
                 this.adHeight = h
+                this.adReady = true
             }
         },
         onAdClose() {
@@ -142,5 +165,9 @@ export default {
 .row-text {
     font-size: 28rpx;
     color: #333333;
+}
+
+.btn {
+    margin: 24rpx;
 }
 </style>

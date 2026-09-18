@@ -1,2 +1,4 @@
 include ':app'
+include ':xilu-ad-bridge'
+project(':xilu-ad-bridge').projectDir = file('../xilu-ad-bridge')
 rootProject.name = 'xilu-android-build'

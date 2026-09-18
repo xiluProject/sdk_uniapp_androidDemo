@@ -10,7 +10,7 @@ import { POS, SPLASH, showSplash, handleAdFailed } from '@/utils/xilu-ad'
 export default {
     data() {
         return {
-                // 全部取自 utils/xilu-ad.js 的 SPLASH
+            // 全部取自 utils/xilu-ad.js 的 SPLASH
             splashType: SPLASH.DEFAULT_TYPE,
             logoHeightPx: SPLASH.LOGO_HEIGHT_PX
         }
@@ -22,7 +22,7 @@ export default {
                 splashType: this.splashType,
                 // 仅半屏(2)时生效
                 logoHeightPx: this.logoHeightPx,
-                // 以下三项与 SplashAdActivity 的三处 setter 一一对应
+                // 以下三项与 SplashAdActivity 的三个 setter 一一对应
                 loadType: SPLASH.LOAD_AND_SHOW,
                 customSkipView: SPLASH.CUSTOM_SKIP_VIEW,
                 skipViewTimeMs: SPLASH.SKIP_VIEW_TIME_MS,

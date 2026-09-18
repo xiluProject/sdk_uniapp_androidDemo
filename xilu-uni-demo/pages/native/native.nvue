@@ -1,14 +1,17 @@
 <template>
     <scroll-view class="page" scroll-y="true">
-        <!-- 信息流模板（单条）：posId = NATATIVE_AD_POS_ID1 -->
-        <view class="ad-box" :style="{ height: adHeight + 'px' }">
+        <!-- 广告位不预留空间：未出广告时槽位 1px + opacity 0，组件自身仍按足够高度渲染
+             （高度给 0 会让部分渠道渲染/测量异常）；onAdRender 后撑开。 -->
+        <view class="ad-box" :style="boxStyle">
             <xilu-native-express v-if="show" :posId="posId" :sceneId="sceneId" :muted="muted" :count="count"
                 :onlySupportPlatform="onlySupportPlatform"
-                :style="{ width: '750rpx', height: adHeight + 'px' }"
+                :style="compStyle"
                 @onAdReceive="onEvent" @onAdRender="onRender" @onAdExpose="onEvent"
                 @onAdClick="onEvent" @onAdClose="onEvent"
                 @onAdFailed="onEvent" @onRenderFailed="onEvent" />
         </view>
+
+        <!-- 加载按钮在广告位下方 -->
         <button class="btn" @click="reload">{{ show ? '重新加载' : '加载信息流广告' }}</button>
     </scroll-view>
 </template>
@@ -16,19 +19,36 @@
 <script>
 import { POS, NATIVE, handleAdFailed } from '@/utils/xilu-ad'
 
+// 广告渲染期间组件容器的高度（不可见，只为让渠道正常布局与测量）
+const PRE_RENDER_H = 600
+
 export default {
     data() {
         return {
             // 参数全部取自 utils/xilu-ad.js 的 NATIVE
-            // posId = NATIVE_AD_POS_ID1
             posId: POS.nativeTemplate,
             sceneId: NATIVE.SCENE_ID,
             muted: NATIVE.PLAY_WITH_MUTE,
             count: NATIVE.COUNT_SINGLE,
             onlySupportPlatform: NATIVE.ONLY_SUPPORT_PLATFORM,
             show: false,
-            // nvue 不支持 wrap_content，先用占位高度，onAdRender 回传实际高度后再调整
-            adHeight: 400
+            // 广告真实高度（dp）：0 = 还没拿到，此时槽位只占 1px
+            adHeight: 0,
+            adReady: false
+        }
+    },
+    computed: {
+        boxStyle() {
+            if (!this.adReady) {
+                return { width: '750rpx', height: '1px', opacity: 0 }
+            }
+            return { width: '750rpx', height: this.adHeight + 'px' }
+        },
+        compStyle() {
+            return {
+                width: '750rpx',
+                height: (this.adReady ? this.adHeight : PRE_RENDER_H) + 'px'
+            }
         }
     },
     onLoad() {
@@ -37,6 +57,7 @@ export default {
     methods: {
         reload() {
             this.show = false
+            this.adReady = false
             // 同一个 ADXiluNativeAd 只有一次 loadAd 有效，用 v-if 重建组件触发重新 loadAd
             this.$nextTick(() => {
                 this.show = true
@@ -47,6 +68,7 @@ export default {
             const h = d.height || 0
             if (h > 0) {
                 this.adHeight = h
+                this.adReady = true
             }
         },
         onEvent(e) {
@@ -56,9 +78,11 @@ export default {
                 // 失败提示由 utils/xilu-ad.js 的 AD_TOAST.ERROR 统一控制
                 handleAdFailed('native', e)
                 this.show = false
+                this.adReady = false
             } else if (ev === 'onAdClose') {
                 // 广告关闭：插件已 release，隐藏容器
                 this.show = false
+                this.adReady = false
             }
         }
     }

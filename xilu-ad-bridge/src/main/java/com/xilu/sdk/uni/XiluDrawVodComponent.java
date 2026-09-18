@@ -2,6 +2,7 @@ package com.xilu.sdk.uni;
 
 import android.app.Activity;
 import android.content.Context;
+import android.os.Looper;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
@@ -27,9 +28,7 @@ import io.dcloud.feature.uniapp.ui.component.AbsVContainer;
 import io.dcloud.feature.uniapp.ui.component.UniComponent;
 import io.dcloud.feature.uniapp.ui.component.UniComponentProp;
 
-/**
- * Draw 视频信息流组件
- */
+// Draw 视频信息流组件
 public class XiluDrawVodComponent extends UniComponent<FrameLayout> {
 
     private ADXiluDrawVodAd drawVodAd;
@@ -209,11 +208,22 @@ public class XiluDrawVodComponent extends UniComponent<FrameLayout> {
                 if (child == null) return;
                 int height = child.getHeight();
                 if (height <= 0) {
+                    // 兜底必须**先按容器宽度 measure 一次**再取 measuredHeight：
+                    // 这是 post 出来的，执行时布局未必跑过，直接取会拿到 0 而静默 return
+                    int width = container.getWidth();
+                    if (width <= 0) {
+                        width = container.getContext().getResources().getDisplayMetrics().widthPixels;
+                    }
+                    child.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
                     height = child.getMeasuredHeight();
                 }
                 if (height <= 0) return;
+                // 这里是物理像素，页面当 dp 用，必须 ÷density
+                float density = container.getContext().getResources().getDisplayMetrics().density;
+                if (density <= 0) density = 1f;
                 Map<String, Object> params = new HashMap<>();
-                params.put("height", height);
+                params.put("height", Math.round(height / density));
                 fireEventWithDetail("onAdRender", params);
             }
         });
@@ -239,18 +249,22 @@ public class XiluDrawVodComponent extends UniComponent<FrameLayout> {
         if (msg == null || msg.isEmpty()) msg = "广告加载失败";
         return msg + "（code=" + error.getCode() + "）";
     }
-    /**
-     * 触发组件事件，并把业务数据放进 {@code detail}。
-     *
-     * 【必须这样做】uniapp 对原生组件事件的参数有硬性约定：只有放在 {@code detail} 键下的数据
-     * 才会送达 JS，其余键会被清理掉。若直接 {@code fireEvent(type, params)}，
-     * JS 侧收到的 {@code e.detail} 会是空对象 {@code {}}（参数被静默丢弃）。
-     * 参见 DCloud 问答：https://ask.dcloud.net.cn/question/191809
-     * 「目前uni限制 参数需要放入到"detail"中 否则会被清理」。
-     */
-    private void fireEventWithDetail(String type, Map<String, Object> data) {
-        Map<String, Object> params = new HashMap<>();
+    /** 触发组件事件：业务数据必须放 detail 键下，否则 JS 收到空对象；且必须回主线程 */
+    private void fireEventWithDetail(final String type, Map<String, Object> data) {
+        final Map<String, Object> params = new HashMap<>();
         params.put("detail", data);
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            FrameLayout host = getHostView();
+            if (host != null) {
+                host.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        fireEvent(type, params);
+                    }
+                });
+            }
+            return;
+        }
         fireEvent(type, params);
     }
 

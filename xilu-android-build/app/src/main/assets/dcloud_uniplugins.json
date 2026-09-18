@@ -21,11 +21,6 @@
                     "type": "component",
                     "name": "xilu-native-feed",
                     "class": "com.xilu.sdk.uni.XiluNativeFeedComponent"
-                },
-                {
-                    "type": "component",
-                    "name": "xilu-draw-vod",
-                    "class": "com.xilu.sdk.uni.XiluDrawVodComponent"
                 }
             ]
         }

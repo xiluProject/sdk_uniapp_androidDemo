@@ -4,9 +4,7 @@ import com.xilu.sdk.ad.data.ADXiluDrawVodAdInfo;
 import com.xilu.sdk.ad.error.ADXiluError;
 import com.xilu.sdk.ad.listener.ADXiluDrawVodVideoListener;
 
-/**
- * Draw 视频信息流视频回调桥
- */
+// Draw 视频信息流视频回调桥
 public abstract class XiluDrawVodVideoBridge implements ADXiluDrawVodVideoListener {
 
     protected abstract void emit(String event);

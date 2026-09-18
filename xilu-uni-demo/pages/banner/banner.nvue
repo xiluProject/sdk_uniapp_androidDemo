@@ -1,19 +1,36 @@
 <template>
     <view class="page">
-        <view style="width:750rpx; height:128rpx;">
-            <!-- 必须显式宽高；onAdFailed 隐藏容器、onAdClose 后重新加载 -->
-            <xilu-banner v-if="show" style="width:750rpx; height:128rpx;" :posId="posId" :sceneId="sceneId"
-                :onlySupportPlatform="onlySupportPlatform" :refreshInterval="refreshInterval"
-                :adShakeDisable="adShakeDisable"
-                @onAdReceive="onEvent" @onAdExpose="onEvent" @onAdClick="onEvent"
-                @onAdClose="onEvent" @onAdFailed="onEvent" />
+        <!-- 广告位不预留空间：未出广告时槽位 absolute + opacity 0（不占流式空间、看不见），但必须给足高度，
+             否则 SDK 过不了曝光检查、永远不发请求；onAdRender 拿到真实宽高后再切成正常流式尺寸。 -->
+        <view class="ad-row">
+            <view :style="slotStyle">
+                <xilu-banner v-if="show" :style="compStyle" :posId="posId"
+                    :sceneId="sceneId" :onlySupportPlatform="onlySupportPlatform" :refreshInterval="refreshInterval"
+                    :adSize="adSize" :adShakeDisable="adShakeDisable"
+                    @onAdReceive="onEvent" @onAdRender="onRender" @onAdExpose="onEvent" @onAdClick="onEvent"
+                    @onAdClose="onEvent" @onAdFailed="onEvent" />
+            </view>
         </view>
+
+        <!-- 加载按钮在广告位下方：广告没出来时它就在顶部，广告出来被顶下去 -->
         <button class="btn" @click="reload">{{ show ? '重新加载' : '加载广告' }}</button>
     </view>
 </template>
 
 <script>
 import { POS, BANNER, handleAdFailed } from '@/utils/xilu-ad'
+
+// 槽位宽度初值（拿到广告真实宽度前的兜底，与 nvue 单位一致：style 里的 px 就是 dp）
+const SCREEN_W = (() => {
+    try {
+        return uni.getSystemInfoSync().windowWidth || 375
+    } catch (e) {
+        return 375
+    }
+})()
+
+// 发请求前给容器的临时高度（dp）：SDK 要曝光检查通过才发请求，容器没尺寸就永远不请求
+const PRE_RENDER_H = 400
 
 export default {
     data() {
@@ -23,47 +40,103 @@ export default {
             sceneId: BANNER.SCENE_ID,
             onlySupportPlatform: BANNER.ONLY_SUPPORT_PLATFORM,
             refreshInterval: BANNER.AUTO_REFRESH_INTERVAL,
+            adSize: BANNER.AD_SIZE,
             adShakeDisable: BANNER.AD_SHAKE_DISABLE,
+            adWidth: SCREEN_W,
+            adHeight: 0,
+            // 是否已拿到广告真实尺寸（拿到之前槽位只占 1px、不占页面空间）
+            adReady: false,
             show: false
         }
+    },
+    computed: {
+        // 外层槽位：未就绪 = 绝对定位 + 足够高度 + 透明；就绪 = 正常流式 + 广告真实宽高
+        slotStyle() {
+            if (!this.adReady) {
+                return {
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    width: '750rpx',
+                    height: PRE_RENDER_H + 'px',
+                    opacity: 0
+                }
+            }
+            return { width: this.adWidth + 'px', height: this.adHeight + 'px' }
+        },
+        // 组件自身：未就绪时先按足够高度渲染，就绪后与槽位一致
+        compStyle() {
+            if (!this.adReady) {
+                return { width: '750rpx', height: PRE_RENDER_H + 'px' }
+            }
+            return { width: this.adWidth + 'px', height: this.adHeight + 'px' }
+        }
+    },
+    onLoad() {
+        this.show = true
     },
     methods: {
         reload() {
             this.show = false
+            // 收起槽位：重新加载期间不占页面空间，等新广告回传尺寸再撑开
+            this.adReady = false
             // 同一个 ADXiluBannerAd 只有一次 loadAd 有效，重建组件实例（v-if 切换）触发重新 loadAd
             this.$nextTick(() => {
                 this.show = true
             })
         },
+        // 插件回传广告真实宽高（dp），保留 2px 死区防抖；自刷新换素材会重新收敛
+        onRender(e) {
+            const d = e.detail || {}
+            const w = d.width || 0
+            const h = d.height || 0
+            if (w > 0 && Math.abs(w - this.adWidth) >= 2) {
+                this.adWidth = w
+            }
+            if (h > 0 && Math.abs(h - this.adHeight) >= 2) {
+                this.adHeight = h
+            }
+            if (h > 0) {
+                this.adReady = true
+            }
+        },
         onEvent(e) {
             const ev = e.type || ''
             console.log('banner event:', ev)
             if (ev === 'onAdFailed') {
-                // 加载失败：隐藏容器
+                // 加载失败：隐藏容器（不占空间）
                 this.show = false
+                this.adReady = false
                 // 失败提示由 utils/xilu-ad.js 的 AD_TOAST.ERROR 统一控制
                 handleAdFailed('banner', e)
             } else if (ev === 'onAdClose') {
                 // 广告关闭：组件已自动 release，隐藏容器
                 this.show = false
+                this.adReady = false
             }
         }
     },
     onUnload() {
-        // 离开页面必须销毁组件（触发 XiluBannerComponent.destroy → release）：
-        // SDK 的 banner 自刷新（默认 30s，SDK 侧强制、关不掉）不会因为页面不可见而停止，
-        // 不释放就等于让广告在后台持续刷新渲染（WebView/EGL 线程反复起停）。
+        // 必须销毁组件触发 release，否则 SDK 的 30s 自刷新会在后台一直跑
         this.show = false
     }
 }
 </script>
 
 <style>
+/* 与其余 5 个广告页保持一致：页面本身不加内边距，按钮自己留边距。 */
 .page {
-    padding: 24rpx;
+    padding: 0;
+}
+
+/* 横向居中：广告真实宽度常窄于屏幕（穿山甲模板 300dp），槽位收到真实宽度后靠它摆中间 */
+.ad-row {
+    width: 750rpx;
+    flex-direction: row;
+    justify-content: center;
 }
 
 .btn {
-    margin-top: 24rpx;
+    margin: 24rpx;
 }
 </style>

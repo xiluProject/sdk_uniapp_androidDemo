@@ -2,6 +2,7 @@ package com.xilu.sdk.uni;
 
 import android.app.Activity;
 import android.content.Context;
+import android.os.Looper;
 import android.graphics.Color;
 import android.text.TextUtils;
 import android.util.Log;
@@ -38,9 +39,7 @@ import io.dcloud.feature.uniapp.ui.component.AbsVContainer;
 import io.dcloud.feature.uniapp.ui.component.UniComponent;
 import io.dcloud.feature.uniapp.ui.component.UniComponentProp;
 
-/**
- * 信息流自渲染广告组件
- */
+// 信息流自渲染广告组件
 public class XiluNativeFeedComponent extends UniComponent<FrameLayout> {
 
     /** 日志过滤：adb logcat -s XiluNativeFeed */
@@ -390,14 +389,8 @@ public class XiluNativeFeedComponent extends UniComponent<FrameLayout> {
 
         // 注册关闭按钮（交给 SDK 托管，以便回调 onAdClose）
         feed.registerCloseView(close);
-        // 注册广告交互：必须调用，且务必最后调用（与 Demo 一致的时机：素材挂载后、同一帧内同步调用）。
-        //
-        // 【关键】第一个参数 container 必须是 FrameLayout：SDK 的
-        // NativeAdInfo.registerViewForInteraction() 里判断
-        //     getViewContainer() instanceof FrameLayout
-        // 才用 FrameLayout.LayoutParams 把广告素材容器 addView 进去；不是 FrameLayout 就整段跳过，
-        // 结果就是卡片建好了但素材永远挂不上、屏幕上一片空白（demo 传的是 flContent，正是 FrameLayout）。
-        // 所以这里传 media（插件的 FrameLayout 素材槽），而不是 card（RelativeLayout）。
+        // 注册广告交互必须调用且放在最后；第一个参数 container 必须是 FrameLayout，
+        // 否则 SDK 里 instanceof 判断不过就整段跳过 addView，卡片建好但素材永远挂不上（故传 media 而非 card）
         feed.registerViewForInteraction(media, card);
 
         reportHeight(root);
@@ -444,25 +437,33 @@ public class XiluNativeFeedComponent extends UniComponent<FrameLayout> {
                     height = child.getMeasuredHeight();
                 }
                 if (height <= 0) return;
+                // 卡片是原生控件拼的，读数为物理像素，而页面把 onAdRender 的 height 当 dp 用，
+                // 必须 ÷density，否则槽位放大 density 倍、广告下方留一大片空白
+                float density = container.getContext().getResources().getDisplayMetrics().density;
+                if (density <= 0) density = 1f;
                 Map<String, Object> params = new HashMap<>();
-                params.put("height", height);
+                params.put("height", Math.round(height / density));
                 fireEventWithDetail("onAdRender", params);
             }
         });
     }
 
-    /**
-     * 触发组件事件，并把业务数据放进 {@code detail}。
-     *
-     * 【必须这样做】uniapp 对原生组件事件的参数有硬性约定：只有放在 {@code detail} 键下的数据
-     * 才会送达 JS，其余键会被清理掉。若直接 {@code fireEvent(type, params)}，
-     * JS 侧收到的 {@code e.detail} 会是空对象 {@code {}}（参数被静默丢弃）。
-     * 参见 DCloud 问答：https://ask.dcloud.net.cn/question/191809
-     * 「目前uni限制 参数需要放入到"detail"中 否则会被清理」。
-     */
-    private void fireEventWithDetail(String type, Map<String, Object> data) {
-        Map<String, Object> params = new HashMap<>();
+    /** 触发组件事件：业务数据必须放 detail 键下，否则 JS 收到空对象；且必须回主线程 */
+    private void fireEventWithDetail(final String type, Map<String, Object> data) {
+        final Map<String, Object> params = new HashMap<>();
         params.put("detail", data);
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            FrameLayout host = getHostView();
+            if (host != null) {
+                host.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        fireEvent(type, params);
+                    }
+                });
+            }
+            return;
+        }
         fireEvent(type, params);
     }
 

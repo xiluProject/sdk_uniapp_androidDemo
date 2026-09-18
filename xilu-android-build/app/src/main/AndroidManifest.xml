@@ -44,8 +44,18 @@
             android:hardwareAccelerated="true"
             android:launchMode="singleTask"
             android:screenOrientation="user"
-            android:theme="@style/DCloudTheme"
+            android:theme="@style/AppTheme"
             android:windowSoftInputMode="adjustResize">
+            <!--
+              LAUNCHER 入口放在主 Activity 上，而不是 DCloud 的透明壳 io.dcloud.PandoraEntry：
+              点桌面图标时系统给"被启动的窗口"做展开动画，透明壳没有内容 → 动画期间露黑底（黑闪）。
+              入口改到这里后，点图标是"把已有任务带回前台"，系统用任务快照做动画 → 不再黑闪；
+              冷启动也直接进主页面（DCloud 的壳与它的启动图本项目已不使用）。
+            -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
         </activity>
 
         <activity
@@ -56,12 +66,8 @@
             android:label="@string/app_name"
             android:launchMode="singleTask"
             android:screenOrientation="user"
-            android:theme="@style/TranslucentTheme"
+            android:theme="@style/AppShellTheme"
             android:windowSoftInputMode="adjustResize">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
         </activity>
 
         <!-- 开屏页 XiluSplashActivity 由桥接 AAR 的 Manifest 自动合并 -->

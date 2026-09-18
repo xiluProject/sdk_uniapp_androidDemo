@@ -1,17 +1,19 @@
 <template>
     <scroll-view class="page" scroll-y="true">
-        <!-- 信息流自渲染：posId = NATIVE_AD_POS_ID3
-             卡片由插件内原生 View 拼出（WebView DOM 无法注册回 SDK 做点击/曝光归因） -->
-        <view class="ad-box" :style="{ height: adHeight + 'px' }">
+        <!-- 广告位不预留空间：未出广告时槽位 1px + opacity 0，组件自身仍按足够高度渲染
+             （高度给 0 会让原生卡片布局/测量拿不到真实值）；onAdRender 后撑开。 -->
+        <view class="ad-box" :style="boxStyle">
             <xilu-native-feed v-if="show" :posId="posId" :sceneId="sceneId" :muted="muted" :count="count"
                 :onlySupportPlatform="onlySupportPlatform"
-                :style="{ width: '750rpx', height: adHeight + 'px' }"
+                :style="compStyle"
                 @onAdReceive="onEvent" @onAdRender="onRender" @onAdExpose="onEvent"
                 @onAdClick="onEvent" @onAdClose="onEvent"
                 @onAdFailed="onEvent" @onRenderFailed="onEvent"
                 @onVideoStart="onEvent" @onVideoPause="onEvent"
                 @onVideoComplete="onEvent" @onVideoError="onEvent" />
         </view>
+
+        <!-- 加载按钮在广告位下方 -->
         <button class="btn" @click="reload">{{ show ? '重新加载' : '加载自渲染信息流' }}</button>
     </scroll-view>
 </template>
@@ -19,18 +21,35 @@
 <script>
 import { POS, NATIVE, handleAdFailed } from '@/utils/xilu-ad'
 
+// 广告渲染期间组件容器的高度（不可见，只为让渠道正常布局与测量）
+const PRE_RENDER_H = 600
+
 export default {
     data() {
         return {
             // 参数全部取自 utils/xilu-ad.js 的 NATIVE
-            // NATIVE_AD_POS_ID3
             posId: POS.nativeSelfRender,
             sceneId: NATIVE.SCENE_ID,
             muted: NATIVE.PLAY_WITH_MUTE,
             count: NATIVE.COUNT_SINGLE,
             onlySupportPlatform: NATIVE.ONLY_SUPPORT_PLATFORM,
             show: false,
-            adHeight: 480
+            adHeight: 0,
+            adReady: false
+        }
+    },
+    computed: {
+        boxStyle() {
+            if (!this.adReady) {
+                return { width: '750rpx', height: '1px', opacity: 0 }
+            }
+            return { width: '750rpx', height: this.adHeight + 'px' }
+        },
+        compStyle() {
+            return {
+                width: '750rpx',
+                height: (this.adReady ? this.adHeight : PRE_RENDER_H) + 'px'
+            }
         }
     },
     onLoad() {
@@ -39,6 +58,7 @@ export default {
     methods: {
         reload() {
             this.show = false
+            this.adReady = false
             this.$nextTick(() => {
                 this.show = true
             })
@@ -48,6 +68,7 @@ export default {
             const h = d.height || 0
             if (h > 0) {
                 this.adHeight = h
+                this.adReady = true
             }
         },
         onEvent(e) {
@@ -57,8 +78,10 @@ export default {
                 // 失败提示由 utils/xilu-ad.js 的 AD_TOAST.ERROR 统一控制
                 handleAdFailed('feed', e)
                 this.show = false
+                this.adReady = false
             } else if (ev === 'onAdClose') {
                 this.show = false
+                this.adReady = false
             }
         }
     }
