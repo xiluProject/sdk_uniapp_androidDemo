@@ -15,11 +15,39 @@ def asmJars = fileTree("${System.properties['user.home']}/.gradle/caches/modules
     include '**/asm-9*.jar', '**/asm-tree-9*.jar'
 }.files.findAll { it.name.contains('-9.') && !it.name.contains('sources') }
 
-tasks.register('compileAdToastPatcher', JavaCompile) {
-    source = fileTree("${rootProject.projectDir}/tools") { include 'AdToastPatcher.java' }
+tasks.register('compilePatchers', JavaCompile) {
+    source = fileTree("${rootProject.projectDir}/tools") {
+        include 'AdToastPatcher.java', 'UniAdStripper.java'
+    }
     classpath = files(asmJars)
     destinationDirectory = layout.buildDirectory.dir('patcher-classes')
     options.encoding = 'UTF-8'
+}
+
+
+def forceRunStrip = true
+def neutralizeUniAd = (project.findProperty('neutralizeUniAd') ?: 'true').toBoolean()
+def stripTaskNames = []
+patchTargets.eachWithIndex { t, idx ->
+    def name = t.aar
+    def vendorAar = file("${sdkLibsDir}/${name}")
+    def strippedAar = file("${patchedLibsDir}/${name}.stripped")
+    def stripArgs = [vendorAar.absolutePath, strippedAar.absolutePath]
+    if (neutralizeUniAd) {
+        stripArgs << '--neutralize-classes'
+    }
+    stripTaskNames << "stripUniAd${idx}"
+    tasks.register("stripUniAd${idx}", JavaExec) {
+        dependsOn 'compilePatchers'
+        classpath = files(asmJars) + files(layout.buildDirectory.dir('patcher-classes'))
+        mainClass = 'UniAdStripper'
+        args stripArgs
+        inputs.file(vendorAar)
+        inputs.file(file("${rootProject.projectDir}/tools/UniAdStripper.java"))
+        inputs.property('neutralizeUniAd', neutralizeUniAd.toString())
+        outputs.file(strippedAar)
+        outputs.upToDateWhen { !forceRunStrip }
+    }
 }
 
 def patchedAars = []
@@ -27,15 +55,17 @@ def patchTaskNames = []
 def forceRunPatch = true
 patchTargets.eachWithIndex { t, idx ->
     def name = t.aar
+    def strippedAar = file("${patchedLibsDir}/${name}.stripped")
     def out = file("${patchedLibsDir}/${name}")
     patchedAars << out
     patchTaskNames << "patchDcloudAdToast${idx}"
     tasks.register("patchDcloudAdToast${idx}", JavaExec) {
-        dependsOn 'compileAdToastPatcher'
+        dependsOn 'compilePatchers'
+        dependsOn "stripUniAd${idx}"
         classpath = files(asmJars) + files(layout.buildDirectory.dir('patcher-classes'))
         mainClass = 'AdToastPatcher'
-        args file("${sdkLibsDir}/${name}").absolutePath, out.absolutePath, "${t.expect}"
-        inputs.file(file("${sdkLibsDir}/${name}"))
+        args strippedAar.absolutePath, out.absolutePath, "${t.expect}"
+        inputs.file(strippedAar)
         inputs.file(file("${rootProject.projectDir}/tools/AdToastPatcher.java"))
         outputs.file(out)
         outputs.upToDateWhen { !forceRunPatch }

@@ -92,6 +92,13 @@ export default {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    /* overflow:hidden 会裁掉 uni 伪元素画的那条 1px 底边，改用真实边框 */
+    border: 1px solid #d0d0d0;
+}
+
+/* 关掉 uni 的伪元素边框，避免和上面的 border 叠成双线 */
+.menu-btn::after {
+    border: none;
 }
 
 .menu-row {
