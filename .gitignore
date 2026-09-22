@@ -48,3 +48,6 @@ gradle/wrapper/gradle-wrapper.jar
 !package-lock.json
 !yarn.lock
 !pnpm-lock.yaml
+
+# SDK 源码工程（独立仓库，放在这里只是为了本地编译，别提交）
+/XiluSdk_android_jdk11-master/

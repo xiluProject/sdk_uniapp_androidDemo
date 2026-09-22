@@ -156,7 +156,10 @@ public class XiluBannerComponent extends UniComponent<FrameLayout> {
             // 原生视图树的创意高度最可靠：平台把创意渲染进自己的视图，外层包装层会被槽位拉满，
             // 里面那层才是素材真实高度。素材图比例（imgH）和文字行高（textH）都只是它的兜底。
             final int treeH = measureNativeContentHeight(ad, wPx);
-            final int mediaH = treeH > 0 ? Math.max(treeH, textH) : Math.max(imgH, textH);
+            // 原生视图树的创意高度最可靠：平台把创意渲染进自己的视图，外层包装层会被槽位拉满，
+    // 里面那层才是素材真实高度。素材图固有像素高（imgH）不能当横幅高度用（图不等于横幅），
+    // 探针偶尔量不到 treeH 时沿用上一次的可信值，避免 169↔607 来回跳。
+    final int mediaH = treeH > 0 ? Math.max(treeH, textH) : lastGoodH;
             // 「可信读数」= 平台自己的渲染几何。只有它缺失时才需要等下一拍。
             final boolean credible = treeH > 0 || imgH > 0;
             if (probeTick == 0) Log.d(TAG, "tree: " + dumpTree(ad, 0, 5, wPx));
@@ -257,6 +260,18 @@ public class XiluBannerComponent extends UniComponent<FrameLayout> {
         // 内容高度不可能超过平台接受的框：SDK 回传过框就夹一次（防探测把高度算大）
         if (sdkBoxHeightPx > 0 && hPx > sdkBoxHeightPx) {
             hPx = sdkBoxHeightPx;
+        }
+        // 读数≈容器高度 = 被 MATCH_PARENT 拉满的包装层，不是创意真实高度：丢弃，沿用上次可信值。
+        // 不丢的话会"长高→撑满→再长高"来回跳（穿山甲自适应模板就是这个现象）
+        int slotH = host.getHeight();
+        if (slotH > 2 && hPx >= slotH - 2) {
+            if (lastGoodH > 0) {
+                hPx = lastGoodH;
+            } else if (probeTick < MAX_PROBE_TICKS) {
+                probeTick++;
+                host.postDelayed(sizeProbe, PROBE_TICK_MS);
+                return;
+            }
         }
         Log.d(TAG, "size probe: tick=" + probeTick + ", slot=" + host.getWidth() + "x" + host.getHeight()
                 + ", domBottom=" + domBottom + "dp, " + fallbackInfo + ", sdkBox=" + sdkBoxHeightPx
