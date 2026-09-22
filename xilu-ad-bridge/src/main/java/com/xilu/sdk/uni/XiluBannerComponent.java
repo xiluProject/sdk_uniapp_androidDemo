@@ -257,9 +257,6 @@ public class XiluBannerComponent extends UniComponent<FrameLayout> {
             }
             return;
         }
-        // 不再用"请求框"夹高度：槽位必须跟平台真实渲染结果走（请求框只决定"我们告诉平台的尺寸"）。
-        // 只留一个"不可能这么大"的兜底：真横幅不会超过屏幕一半高，防探测偶发异常值把页面撑爆；
-        // 真出现这种读数时优先沿用上次可信值，实在没有才退回请求框。
         int screenH = host.getResources().getDisplayMetrics().heightPixels;
         if (screenH > 0 && hPx > screenH / 2) {
             if (lastGoodH > 0) {
