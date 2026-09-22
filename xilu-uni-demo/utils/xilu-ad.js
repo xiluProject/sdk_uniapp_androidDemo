@@ -34,9 +34,6 @@ export const BANNER = {
     AUTO_REFRESH_INTERVAL: 30,
     ONLY_SUPPORT_PLATFORM: null,
     SCENE_ID: '',
-    // 请求框（"宽*高"，px）：现在只当"槽位宽度 + 槽位高度上限"，横幅高度由平台渲染结果决定，
-    // 留空即可（走后台配置，后台没配则兜底 屏宽×340dp 当上限）。
-    AD_SIZE: '',
     AD_SHAKE_DISABLE: false
 }
 

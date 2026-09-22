@@ -6,7 +6,7 @@
             <view :style="slotStyle">
                 <xilu-banner v-if="show" :style="compStyle" :posId="posId"
                     :sceneId="sceneId" :onlySupportPlatform="onlySupportPlatform" :refreshInterval="refreshInterval"
-                    :adSize="adSize" :adShakeDisable="adShakeDisable"
+                    :adShakeDisable="adShakeDisable"
                     @onAdReceive="onEvent" @onAdRender="onRender" @onAdExpose="onEvent" @onAdClick="onEvent"
                     @onAdClose="onEvent" @onAdFailed="onEvent" />
             </view>
@@ -40,7 +40,6 @@ export default {
             sceneId: BANNER.SCENE_ID,
             onlySupportPlatform: BANNER.ONLY_SUPPORT_PLATFORM,
             refreshInterval: BANNER.AUTO_REFRESH_INTERVAL,
-            adSize: BANNER.AD_SIZE,
             adShakeDisable: BANNER.AD_SHAKE_DISABLE,
             adWidth: SCREEN_W,
             adHeight: 0,
