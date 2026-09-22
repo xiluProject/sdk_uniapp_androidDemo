@@ -257,9 +257,16 @@ public class XiluBannerComponent extends UniComponent<FrameLayout> {
             }
             return;
         }
-        // 内容高度不可能超过平台接受的框：SDK 回传过框就夹一次（防探测把高度算大）
-        if (sdkBoxHeightPx > 0 && hPx > sdkBoxHeightPx) {
-            hPx = sdkBoxHeightPx;
+        // 不再用"请求框"夹高度：槽位必须跟平台真实渲染结果走（请求框只决定"我们告诉平台的尺寸"）。
+        // 只留一个"不可能这么大"的兜底：真横幅不会超过屏幕一半高，防探测偶发异常值把页面撑爆；
+        // 真出现这种读数时优先沿用上次可信值，实在没有才退回请求框。
+        int screenH = host.getResources().getDisplayMetrics().heightPixels;
+        if (screenH > 0 && hPx > screenH / 2) {
+            if (lastGoodH > 0) {
+                hPx = lastGoodH;
+            } else if (sdkBoxHeightPx > 0) {
+                hPx = sdkBoxHeightPx;
+            }
         }
         // 读数≈容器高度 = 被 MATCH_PARENT 拉满的包装层，不是创意真实高度：丢弃，沿用上次可信值。
         // 不丢的话会"长高→撑满→再长高"来回跳（穿山甲自适应模板就是这个现象）
