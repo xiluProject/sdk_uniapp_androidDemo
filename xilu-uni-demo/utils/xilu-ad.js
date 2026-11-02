@@ -24,7 +24,6 @@ export const SPLASH = {
     ONLY_SUPPORT_PLATFORM: null,
     CUSTOM_SKIP_VIEW: false,
     SKIP_VIEW_TIME_MS: 5000,
-    LOGO_HEIGHT_PX: 0,
     AD_SHAKE_DISABLE: false,
     DEFAULT_TYPE: 0
 }

@@ -2,7 +2,7 @@
     "id": "Xilu-AD",
     "version": "1.0.0",
     "name": "Xilu-AD",
-    "description": "XiluAD uni-app 原生插件（桥接 XiluSDKCore v1.0.8.5）",
+    "description": "XiluAD uni-app 原生插件（桥接 XiluSDKCore v1.0.8.6）",
     "_dp_type": "nativeplugin",
     "_dp_nativeplugin": {
         "android": {

@@ -1,4 +1,4 @@
-# Xilu 聚合广告 SDK UniApp 接入文档 V1.0.8.5
+# Xilu 聚合广告 SDK UniApp 接入文档 V1.0.8.6
 
 > 仅支持 Android（App 端），H5 / 小程序端不可用。
 
@@ -13,7 +13,7 @@ HBuilderX 编译器版本必须与离线 SDK 版本一致，都是 **5.24**。�
 | 组成 | 文件 |
 |------|------|
 | 桥接层 | `xilu-ad-bridge/`（源码，离线打包以 project 方式依赖） |
-| 核心 SDK | `XiluSDKCore-v1.0.8.5.aar` |
+| 核心 SDK | `XiluSDKCore-v1.0.8.6.aar` |
 | 渠道适配器 | `AdapterCSJ / GDT / BQT / KS / MS / BZ`，共 6 个 |
 | 三方广告底包 | 穿山甲 / 优量汇 / 百青藤 / 快手 / 美数 / 倍孜 SDK |
 | JS 工具模块 | `utils/xilu-ad.js` |
@@ -64,8 +64,8 @@ xilu-uni-demo/nativeplugins/Xilu-AD/  →  你的项目/nativeplugins/Xilu-AD/
 
 `android/` 下 15 个 AAR：
 
-- 核心：`XiluSDKCore-v1.0.8.5.aar`
-- 适配器：`AdapterCSJ/GDT/BQT/KS/MS/BZ-v1.0.8.5.aar`（6 个）
+- 核心：`XiluSDKCore-v1.0.8.6.aar`
+- 适配器：`AdapterCSJ/GDT/BQT/KS/MS/BZ-v1.0.8.6.aar`（6 个）
 - 三方底包：`open_ad_sdk_7.5.1.0.aar`、`GDT_SDK.4.662.1532.aar`、`Baidu_MobAds_SDK-release_v9.450.aar`、`KS_AD_4.4.20.1.aar`、`MS_AD_2.5.7.7.aar`、`BZ_AD_5.2.1.21.aar`
 - OAID：`hms-ads-identifier-3.4.62.300.aar`、`mcs-ads-identifier-1.0.2.301.aar`
 

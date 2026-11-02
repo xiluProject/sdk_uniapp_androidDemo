@@ -462,8 +462,7 @@ public class XiluAdModule extends UniModule {
         Activity activity = (Activity) mUniSDKInstance.getContext();
         Intent i = new Intent(activity, XiluSplashActivity.class);
         i.putExtra("posId", string(o, "posId", ""));
-        i.putExtra("splashType", integer(o, "splashType", 0));   // 0沉浸全屏 1全屏 2半屏（实收值由 Activity 打印）
-        i.putExtra("logoHeightPx", integer(o, "logoHeightPx", 0));
+        i.putExtra("splashType", integer(o, "splashType", 0));   // 0沉浸全屏 1全屏 2半屏（开屏一律全屏）
         i.putExtra("adShakeDisable", bool(o, "adShakeDisable", false));
         // 加载方式：0 = LOAD_AND_SHOW（收到即展示，默认）、1 = LOAD_ONLY（Activity 内手动加载/展示）
         i.putExtra("loadType", integer(o, "loadType", XiluSplashActivity.LOAD_AND_SHOW));

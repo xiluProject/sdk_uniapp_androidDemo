@@ -17,6 +17,7 @@ import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.xilu.sdk.ad.ADXiluSplashAd;
 import com.xilu.sdk.ad.data.ADXiluAdInfo;
@@ -24,6 +25,7 @@ import com.xilu.sdk.ad.entity.ADXiluAdSize;
 import com.xilu.sdk.ad.entity.ADXiluExtraParams;
 import com.xilu.sdk.ad.error.ADXiluError;
 import com.xilu.sdk.ad.listener.ADXiluSplashAdListener;
+import com.xilu.sdk.config.ADXiluErrorConfig;
 
 import org.json.JSONObject;
 
@@ -63,9 +65,8 @@ public class XiluSplashActivity extends Activity {
     private Button btnShow;
 
     private String posId;
-    /** 0沉浸全屏 1全屏 2半屏 */
+    /** 0沉浸全屏 1全屏 2半屏（开屏一律全屏展示，这三个值只是历史配置项） */
     private int splashType;
-    private int logoHeightPx;
     private int loadType = LOAD_AND_SHOW;
     private boolean customSkipView = false;
     private long skipViewTimeMs = 5000;
@@ -78,7 +79,6 @@ public class XiluSplashActivity extends Activity {
         super.onCreate(savedInstanceState);
         posId = getIntent().getStringExtra("posId");
         splashType = getIntent().getIntExtra("splashType", 0);
-        logoHeightPx = getIntent().getIntExtra("logoHeightPx", 0);
         loadType = getIntent().getIntExtra("loadType", LOAD_AND_SHOW);
         customSkipView = getIntent().getBooleanExtra("customSkipView", false);
         skipViewTimeMs = getIntent().getLongExtra("skipViewTimeMs", 5000);
@@ -225,14 +225,7 @@ public class XiluSplashActivity extends Activity {
         flContainer = root.findViewById(R.id.fl_splash_container);
 
         LinearLayout column = root.findViewById(R.id.ll_splash_column);
-        if (splashType == 2 && logoHeightPx > 0) {
-            View logo = new View(this);
-            logo.setBackgroundColor(Color.WHITE);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, logoHeightPx);
-            lp.gravity = Gravity.BOTTOM;
-            column.addView(logo, lp);
-        }
+        // 开屏一律全屏展示，底部不再留白条
         // LOAD_ONLY：底部加载/展示按钮，由用户手动触发
         if (loadType == LOAD_ONLY) {
             LinearLayout bar = new LinearLayout(this);
@@ -286,7 +279,7 @@ public class XiluSplashActivity extends Activity {
 
         // 设置整个广告视图预期宽高（目前仅穿山甲平台需要），单位为 px
         splashAd.setLocalExtraParams(new ADXiluExtraParams.Builder()
-                .adSize(new ADXiluAdSize(widthPixels, heightPixels - logoHeightPx))
+                .adSize(new ADXiluAdSize(widthPixels, heightPixels))
                 .setAdShakeDisable(getIntent().getBooleanExtra("adShakeDisable", false))
                 .build());
         // 沉浸式：跳过按钮距离顶部的高度会加上状态栏高度
@@ -362,6 +355,9 @@ public class XiluSplashActivity extends Activity {
             @Override
             public void onAdFailed(ADXiluError error) {
                 emit("onAdFailed", json("error", error == null ? "unknown" : error.toString()));
+                if (error != null && error.getCode() == ADXiluErrorConfig.AD_FAILED_COMPLAINT_BLOCK) {
+                    Toast.makeText(XiluSplashActivity.this, "投诉冷却中，跳过开屏", Toast.LENGTH_SHORT).show();
+                }
                 getWindow().getDecorView().postDelayed(new Runnable() {
                     @Override
                     public void run() {

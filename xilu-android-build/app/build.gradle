@@ -201,14 +201,14 @@ dependencies {
 
     // Xilu-AD 插件：桥接插件走源码工程（settings.gradle），华为/荣耀 OAID 走线上仓库
     implementation project(':xilu-ad-bridge')
-    implementation files("${xiluAarDir}/XiluSDKCore-v1.0.8.5.aar")           // Xilu 聚合 SDK Core
+    implementation files("${xiluAarDir}/XiluSDKCore-v1.0.8.6.aar")           // Xilu 聚合 SDK Core
     // 6 个 Adapter
-    implementation files("${xiluAarDir}/AdapterCSJ-v1.0.8.5.aar")
-    implementation files("${xiluAarDir}/AdapterGDT-v1.0.8.5.aar")
-    implementation files("${xiluAarDir}/AdapterBQT-v1.0.8.5.aar")
-    implementation files("${xiluAarDir}/AdapterKS-v1.0.8.5.aar")
-    implementation files("${xiluAarDir}/AdapterMS-v1.0.8.5.aar")
-    implementation files("${xiluAarDir}/AdapterBZ-v1.0.8.5.aar")
+    implementation files("${xiluAarDir}/AdapterCSJ-v1.0.8.6.aar")
+    implementation files("${xiluAarDir}/AdapterGDT-v1.0.8.6.aar")
+    implementation files("${xiluAarDir}/AdapterBQT-v1.0.8.6.aar")
+    implementation files("${xiluAarDir}/AdapterKS-v1.0.8.6.aar")
+    implementation files("${xiluAarDir}/AdapterMS-v1.0.8.6.aar")
+    implementation files("${xiluAarDir}/AdapterBZ-v1.0.8.6.aar")
     // 6 个三方广告底包
     implementation files("${xiluAarDir}/open_ad_sdk_7.5.1.0.aar")            // 穿山甲（AdapterCSJ）
     implementation files("${xiluAarDir}/GDT_SDK.4.662.1532.aar")             // 优量汇（AdapterGDT）
